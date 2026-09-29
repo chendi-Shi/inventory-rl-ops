@@ -1,0 +1,137 @@
+{
+  "training": {
+    "episodes": 200,
+    "seed": 42,
+    "last_10_mean_profit": 2778.8399999999997,
+    "mean_huber_loss": 0.17901397569575725
+  },
+  "scenarios": {
+    "holdout": {
+      "policies": {
+        "dqn": {
+          "mean_profit": 2657.783333,
+          "profit_std": 270.764021,
+          "p10_profit": 2316.28,
+          "mean_fill_rate": 0.962307
+        },
+        "base_stock": {
+          "mean_profit": 2567.093333,
+          "profit_std": 83.560591,
+          "p10_profit": 2467.225,
+          "mean_fill_rate": 0.777087
+        },
+        "random": {
+          "mean_profit": 2110.401667,
+          "profit_std": 265.469792,
+          "p10_profit": 1775.375,
+          "mean_fill_rate": 0.805711
+        }
+      },
+      "paired_mean_uplift": 90.68999999999993,
+      "paired_uplift_ci95": [
+        -8.97716666666646,
+        186.45570833333343
+      ],
+      "promotion": {
+        "eligible": false,
+        "rules": "lower 95% bootstrap CI of paired profit uplift > 0; fill-rate drop <= 2pp; p10 profit >= baseline"
+      },
+      "seeds": [
+        10000,
+        10001,
+        10002,
+        10003,
+        10004,
+        10005,
+        10006,
+        10007,
+        10008,
+        10009,
+        10010,
+        10011,
+        10012,
+        10013,
+        10014,
+        10015,
+        10016,
+        10017,
+        10018,
+        10019,
+        10020,
+        10021,
+        10022,
+        10023,
+        10024,
+        10025,
+        10026,
+        10027,
+        10028,
+        10029
+      ]
+    },
+    "demand_surge_25pct": {
+      "policies": {
+        "dqn": {
+          "mean_profit": 3400.58,
+          "profit_std": 144.373976,
+          "p10_profit": 3247.985,
+          "mean_fill_rate": 0.826934
+        },
+        "base_stock": {
+          "mean_profit": 3270.485,
+          "profit_std": 101.29001,
+          "p10_profit": 3148.77,
+          "mean_fill_rate": 0.770696
+        },
+        "random": {
+          "mean_profit": 2497.956667,
+          "profit_std": 202.894715,
+          "p10_profit": 2235.03,
+          "mean_fill_rate": 0.671102
+        }
+      },
+      "paired_mean_uplift": 130.09500000000045,
+      "paired_uplift_ci95": [
+        63.11216666666716,
+        196.40729166666725
+      ],
+      "promotion": {
+        "eligible": true,
+        "rules": "lower 95% bootstrap CI of paired profit uplift > 0; fill-rate drop <= 2pp; p10 profit >= baseline"
+      },
+      "seeds": [
+        20000,
+        20001,
+        20002,
+        20003,
+        20004,
+        20005,
+        20006,
+        20007,
+        20008,
+        20009,
+        20010,
+        20011,
+        20012,
+        20013,
+        20014,
+        20015,
+        20016,
+        20017,
+        20018,
+        20019,
+        20020,
+        20021,
+        20022,
+        20023,
+        20024,
+        20025,
+        20026,
+        20027,
+        20028,
+        20029
+      ]
+    }
+  },
+  "note": "Synthetic 60-day episodes; not production outcomes."
+}
