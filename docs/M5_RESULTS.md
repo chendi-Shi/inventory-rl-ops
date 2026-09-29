@@ -12,7 +12,7 @@ inventory-rl m5-run --data data/m5/sales_train_validation.csv \
   --output artifacts/m5-ca1
 ```
 
-Training used days 1–1700. Validation used days 1701–1800 to select a policy checkpoint and tune the base-stock rule. The final comparison used days 1801–1913 (113 days). SKU selection used only training-period sales. Seed 22 at episode 50 was selected on validation; the tuned rule used the long-run mean and two days of safety coverage. The full machine-readable output is `artifacts/m5-ca1/report.json` when the command is run locally.
+Training used days 1–1700. Validation used days 1701–1800 to select a policy checkpoint and tune the base-stock rule. The final comparison used days 1801–1913 (113 days). SKU selection used only training-period sales. Seed 22 at episode 50 was selected on validation; the tuned rule used the long-run mean and two days of safety coverage. The [machine-readable report](m5-ca1-report.json) records selected items, configuration, validation history and paired daily test returns. The command also writes it to `artifacts/m5-ca1/report.json` locally.
 
 ## Held-out results
 

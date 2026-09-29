@@ -2,7 +2,7 @@
 
 A portfolio-scale reinforcement learning system for **64 SKUs sharing one warehouse budget and storage capacity**. Its main experiment replays item-level sales from the [M5 Walmart retail dataset](https://doi.org/10.5281/zenodo.10203108), trains a shared-network factored Double DQN, tunes a credible replenishment baseline on a separate validation period, and evaluates once on a future test period. It includes a versioned decision bundle, a constrained batch recommendation API, CI, and conservative promotion rules.
 
-**Verification status:** the complete M5 pipeline passes automated end-to-end tests and has been run on the official 120 MB M5 CSV. On the 113-day CA_1 holdout, Double DQN earned **266,565.7 simulated profit units** against **270,500.7** for a validation-tuned base-stock rule (−1.45%). The paired 95% block-bootstrap interval for the profit difference is **[−8,691.3, 1,415.6]**. The policy failed the offline promotion gate and is blocked from serving by default. [Full results and interpretation](docs/M5_RESULTS.md). These are simulated economics, not observed business profit.
+**Verification status:** the complete M5 pipeline passes automated end-to-end tests and has been run on the official 120 MB M5 CSV. On the 113-day CA_1 holdout, Double DQN earned **266,565.7 simulated profit units** against **270,500.7** for a validation-tuned base-stock rule (−1.45%). The paired 95% block-bootstrap interval for the profit difference is **[−8,691.3, 1,415.6]**. The policy failed the offline promotion gate and is blocked from serving by default. [Full results and interpretation](docs/M5_RESULTS.md) · [Machine-readable report](docs/m5-ca1-report.json). These are simulated economics, not observed business profit.
 
 ## Why this is an RL problem
 
@@ -51,5 +51,5 @@ Do not describe the −1.45% as a real retail profit change. M5 provides observe
 | Training, baseline tuning, test and bootstrap | `src/inventory_rl/m5_experiment.py` |
 | Portable policy bundle and inference | `src/inventory_rl/portfolio_artifact.py`, `src/inventory_rl/api.py` |
 | Automated checks | `tests/`, `.github/workflows/ci.yml` |
-| Official-data evaluation and limitations | `docs/M5_RESULTS.md`, `docs/M5_PROTOCOL.md` |
+| Official-data evaluation and limitations | `docs/M5_RESULTS.md`, `docs/m5-ca1-report.json`, `docs/M5_PROTOCOL.md` |
 | Small synthetic component benchmark | `src/inventory_rl/env.py`, `docs/synthetic-results.json` |
