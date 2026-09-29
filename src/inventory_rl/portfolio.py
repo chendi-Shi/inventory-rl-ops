@@ -1,0 +1,140 @@
+"""Multi-SKU demand-replay simulator with shared purchasing and storage limits."""
+
+from dataclasses import dataclass
+
+import numpy as np
+
+from inventory_rl.m5 import M5Series
+
+ORDER_CHOICES = np.array([0, 4, 8, 16], dtype=np.int32)
+
+
+@dataclass(frozen=True)
+class PortfolioConfig:
+    budget_per_sku: float = 32.0
+    capacity_per_sku: int = 50
+    unit_price: float = 10.0
+    unit_cost: float = 4.0
+    holding_cost: float = 0.15
+    lost_sale_penalty: float = 2.0
+
+    def __post_init__(self) -> None:
+        if min(self.budget_per_sku, self.capacity_per_sku, self.unit_price,
+               self.unit_cost) <= 0:
+            raise ValueError("budget, capacity and prices must be positive")
+        if min(self.holding_cost, self.lost_sale_penalty) < 0:
+            raise ValueError("costs must be nonnegative")
+
+
+def allocate(scores: np.ndarray, *, stock: np.ndarray, pipeline: np.ndarray,
+             budget: float, capacity: int, unit_cost: float) -> np.ndarray:
+    """Deterministic marginal-value allocator; always returns a feasible order.
+
+    It greedily upgrades an item's current action by one pack level. Scores are
+    policy-dependent estimates and need not be calibrated across time; within
+    a decision they must be comparable across SKUs.
+    """
+    n_sku = len(stock)
+    if scores.shape != (n_sku, len(ORDER_CHOICES)):
+        raise ValueError("scores have wrong shape")
+    if not np.isfinite(scores).all():
+        raise ValueError("scores must be finite")
+    if stock.shape != pipeline.shape or (stock < 0).any() or (pipeline < 0).any():
+        raise ValueError("invalid stock or pipeline")
+    if stock.sum() + pipeline.sum() > capacity:
+        raise ValueError("current position exceeds capacity")
+    selected = np.zeros(n_sku, dtype=np.int32)
+    remaining_budget = budget
+    remaining_capacity = capacity - int(stock.sum() + pipeline.sum())
+    while True:
+        best = None
+        for sku in range(n_sku):
+            level = selected[sku]
+            if level == len(ORDER_CHOICES) - 1:
+                continue
+            units = int(ORDER_CHOICES[level + 1] - ORDER_CHOICES[level])
+            cost = units * unit_cost
+            if cost > remaining_budget + 1e-9 or units > remaining_capacity:
+                continue
+            gain = float(scores[sku, level + 1] - scores[sku, level])
+            if gain <= 0:
+                continue
+            ranking = (gain / units, gain, -sku)
+            if best is None or ranking > best[0]:
+                best = (ranking, sku, units, cost)
+        if best is None:
+            break
+        _, sku, units, cost = best
+        selected[sku] += 1
+        remaining_budget -= cost
+        remaining_capacity -= units
+    return ORDER_CHOICES[selected]
+
+
+class PortfolioEnv:
+    """Replay observed M5 sales as an exogenous demand proxy for selected SKUs."""
+
+    def __init__(self, data: M5Series, config: PortfolioConfig | None = None):
+        self.data = data
+        self.config = config or PortfolioConfig()
+        self.lead = 1 + np.arange(data.n_sku) % 3
+        self.mean_train = data.sales[:, max(0, data.train_end - 365):data.train_end].mean(axis=1)
+        self.budget = self.config.budget_per_sku * data.n_sku
+        self.capacity = self.config.capacity_per_sku * data.n_sku
+
+    def reset(self, start: int, end: int) -> np.ndarray:
+        if not 28 <= start < end <= self.data.sales.shape[1]:
+            raise ValueError("invalid replay window")
+        self.day = start
+        self.end = end
+        recent = self.data.sales[:, start - 28:start].mean(axis=1)
+        self.stock = np.minimum(np.ceil(recent * (self.lead + 1)), 40).astype(np.int32)
+        self.pipeline = np.zeros((3, self.data.n_sku), dtype=np.int32)
+        self.last_sales = self.data.sales[:, start - 7:start].astype(np.float64).copy()
+        if self.stock.sum() > self.capacity:
+            raise ValueError("initial position exceeds capacity")
+        return self.observation()
+
+    def observation(self) -> np.ndarray:
+        day_sin = np.sin(2 * np.pi * self.day / 7)
+        day_cos = np.cos(2 * np.pi * self.day / 7)
+        return np.column_stack((
+            np.minimum(self.stock / 40.0, 5),
+            np.minimum(self.pipeline.sum(axis=0) / 40.0, 5),
+            np.minimum(self.last_sales[:, -1] / 40.0, 5),
+            np.minimum(self.last_sales.mean(axis=1) / 40.0, 5),
+            np.minimum(self.mean_train / 40.0, 5),
+            self.lead / 3.0,
+            np.full(self.data.n_sku, day_sin),
+            np.full(self.data.n_sku, day_cos),
+        )).astype(np.float64)
+
+    def step(self, orders: np.ndarray) -> tuple[np.ndarray, np.ndarray, bool, dict]:
+        if self.day >= self.end:
+            raise RuntimeError("reset before stepping a completed replay")
+        if orders.shape != (self.data.n_sku,) or not np.isin(orders, ORDER_CHOICES).all():
+            raise ValueError("invalid order shape or pack size")
+        if orders.sum() * self.config.unit_cost > self.budget + 1e-9:
+            raise ValueError("purchasing budget exceeded")
+        if self.stock.sum() + self.pipeline.sum() + orders.sum() > self.capacity:
+            raise ValueError("storage capacity exceeded")
+        demand = self.data.sales[:, self.day]
+        sold = np.minimum(self.stock, demand)
+        lost = demand - sold
+        self.stock -= sold
+        for sku, lead in enumerate(self.lead):
+            self.pipeline[lead - 1, sku] += orders[sku]
+        reward = (sold * self.config.unit_price - orders * self.config.unit_cost
+                  - self.stock * self.config.holding_cost
+                  - lost * self.config.lost_sale_penalty).astype(np.float64)
+        arrivals = self.pipeline[0].copy()
+        self.pipeline[:-1] = self.pipeline[1:]
+        self.pipeline[-1] = 0
+        self.stock += arrivals
+        self.last_sales[:, :-1] = self.last_sales[:, 1:]
+        self.last_sales[:, -1] = sold
+        self.day += 1
+        info = {"demand": int(demand.sum()), "sold": int(sold.sum()),
+                "lost": int(lost.sum()), "spend": float(orders.sum() * self.config.unit_cost),
+                "stock": int(self.stock.sum()), "profit": float(reward.sum())}
+        return self.observation(), reward, self.day >= self.end, info
