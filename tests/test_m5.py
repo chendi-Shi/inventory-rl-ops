@@ -62,6 +62,51 @@ def test_allocator_and_replay_constraints():
         env.step(np.zeros(8, dtype=np.int32))
 
 
+def test_vectorized_allocator_matches_reference_decisions():
+    choices = np.array([0, 4, 8, 16], dtype=np.int32)
+
+    def reference(scores, stock, pipeline, budget, capacity):
+        selected = np.zeros(len(stock), dtype=np.int32)
+        remaining_budget = budget
+        remaining_capacity = capacity - int(stock.sum() + pipeline.sum())
+        while True:
+            best = None
+            for sku in range(len(stock)):
+                level = selected[sku]
+                if level == 3:
+                    continue
+                units = int(choices[level + 1] - choices[level])
+                cost = units * 4.0
+                if cost > remaining_budget + 1e-9 or units > remaining_capacity:
+                    continue
+                gain = float(scores[sku, level + 1] - scores[sku, level])
+                if gain <= 0:
+                    continue
+                rank = (gain / units, gain, -sku)
+                if best is None or rank > best[0]:
+                    best = (rank, sku, units, cost)
+            if best is None:
+                break
+            _, sku, units, cost = best
+            selected[sku] += 1
+            remaining_budget -= cost
+            remaining_capacity -= units
+        return choices[selected]
+
+    rng = np.random.default_rng(2026)
+    for n_sku in (8, 64):
+        for _ in range(40):
+            stock = rng.integers(0, 30, size=n_sku)
+            pipeline = rng.integers(0, 10, size=n_sku)
+            capacity = int(stock.sum() + pipeline.sum() + rng.integers(0, 300))
+            budget = float(rng.integers(0, 300))
+            scores = rng.integers(-20, 21, size=(n_sku, 4)).astype(float)
+            expected = reference(scores, stock, pipeline, budget, capacity)
+            actual = allocate(scores, stock=stock, pipeline=pipeline, budget=budget,
+                              capacity=capacity, unit_cost=4.0)
+            np.testing.assert_array_equal(actual, expected)
+
+
 def test_end_to_end_m5_pipeline_and_block_ci():
     path = Path("artifacts/_test_m5.csv")
     write_m5_fixture(path)

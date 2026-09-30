@@ -99,28 +99,26 @@ def allocate(scores: np.ndarray, *, stock: np.ndarray, pipeline: np.ndarray,
     selected = np.zeros(n_sku, dtype=np.int32)
     remaining_budget = budget
     remaining_capacity = capacity - int(stock.sum() + pipeline.sum())
+    sku_indices = np.arange(n_sku)
     while True:
-        best = None
-        for sku in range(n_sku):
-            level = selected[sku]
-            if level == len(ORDER_CHOICES) - 1:
-                continue
-            units = int(ORDER_CHOICES[level + 1] - ORDER_CHOICES[level])
-            cost = units * unit_cost
-            if cost > remaining_budget + 1e-9 or units > remaining_capacity:
-                continue
-            gain = float(scores[sku, level + 1] - scores[sku, level])
-            if gain <= 0:
-                continue
-            ranking = (gain / units, gain, -sku)
-            if best is None or ranking > best[0]:
-                best = (ranking, sku, units, cost)
-        if best is None:
+        next_level = np.minimum(selected + 1, len(ORDER_CHOICES) - 1)
+        units = ORDER_CHOICES[next_level] - ORDER_CHOICES[selected]
+        costs = units * unit_cost
+        gains = scores[sku_indices, next_level] - scores[sku_indices, selected]
+        valid = ((selected < len(ORDER_CHOICES) - 1) &
+                 (costs <= remaining_budget + 1e-9) &
+                 (units <= remaining_capacity) & (gains > 0))
+        if not valid.any():
             break
-        _, sku, units, cost = best
+        ratios = np.full(n_sku, -np.inf)
+        ratios[valid] = gains[valid] / units[valid]
+        best_ratio = ratios.max()
+        finalists = valid & (ratios == best_ratio)
+        best_gain = gains[finalists].max()
+        sku = int(np.flatnonzero(finalists & (gains == best_gain))[0])
         selected[sku] += 1
-        remaining_budget -= cost
-        remaining_capacity -= units
+        remaining_budget -= float(costs[sku])
+        remaining_capacity -= int(units[sku])
     return ORDER_CHOICES[selected]
 
 
