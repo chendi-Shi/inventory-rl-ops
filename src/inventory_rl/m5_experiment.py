@@ -14,6 +14,7 @@ from inventory_rl.portfolio import (
     PortfolioEnv,
     allocate,
     base_stock_scores,
+    residual_scores,
 )
 from inventory_rl.portfolio_artifact import save_portfolio_model
 
@@ -25,7 +26,8 @@ def rule_scores(env: PortfolioEnv, cover: float, recent: bool) -> np.ndarray:
 
 def replay(data: M5Series, config: PortfolioConfig, start: int, end: int,
            agent: DQNAgent | None = None, *, cover: float = 1.0,
-           recent: bool = True, random_seed: int | None = None) -> dict:
+           recent: bool = True, random_seed: int | None = None,
+           hybrid_alpha: float | None = None) -> dict:
     env = PortfolioEnv(data, config)
     state = env.reset(start, end)
     rng = np.random.default_rng(random_seed)
@@ -35,7 +37,9 @@ def replay(data: M5Series, config: PortfolioConfig, start: int, end: int,
         if random_seed is not None:
             scores = rng.random((data.n_sku, len(ORDER_CHOICES)))
         elif agent is not None:
-            scores = agent.online.predict(state)
+            q_values = agent.online.predict(state)
+            scores = (q_values if hybrid_alpha is None else
+                      residual_scores(rule_scores(env, cover, recent), q_values, hybrid_alpha))
         else:
             scores = rule_scores(env, cover, recent)
         orders = allocate(scores, stock=env.stock, pipeline=env.pipeline.sum(axis=0),

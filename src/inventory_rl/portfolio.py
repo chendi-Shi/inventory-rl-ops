@@ -18,6 +18,22 @@ def base_stock_scores(stock: np.ndarray, pipeline: np.ndarray, last_sales: np.nd
     return -((ORDER_CHOICES[None, :] - desired[:, None]) ** 2) / (rate[:, None] + 1)
 
 
+def residual_scores(rule: np.ndarray, q_values: np.ndarray, alpha: float) -> np.ndarray:
+    """Add a scaled Q-value residual without changing the exact alpha-zero rule."""
+    if rule.shape != q_values.shape or rule.ndim != 2 or rule.shape[1] != len(ORDER_CHOICES):
+        raise ValueError("invalid residual score dimensions")
+    if not np.isfinite(rule).all() or not np.isfinite(q_values).all():
+        raise ValueError("residual scores must be finite")
+    if not np.isfinite(alpha) or alpha < 0:
+        raise ValueError("alpha must be finite and nonnegative")
+    if alpha == 0:
+        return rule.copy()
+    rule_marginal = np.median(np.abs(np.diff(rule, axis=1)))
+    q_marginal = np.median(np.abs(np.diff(q_values, axis=1)))
+    scale = rule_marginal / max(q_marginal, 1e-6)
+    return rule + alpha * scale * (q_values - q_values[:, :1])
+
+
 @dataclass(frozen=True)
 class PortfolioConfig:
     budget_per_sku: float = 32.0

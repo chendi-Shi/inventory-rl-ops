@@ -11,6 +11,7 @@ from inventory_rl.artifact import load_model, save_model
 from inventory_rl.env import InventoryConfig, InventoryEnv
 from inventory_rl.evaluation import compare
 from inventory_rl.m5_experiment import run as run_m5
+from inventory_rl.m5_hybrid import run_hybrid
 
 
 def train(episodes: int, seed: int, output: Path) -> dict:
@@ -66,15 +67,25 @@ def main() -> None:
     m5_cmd.add_argument("--skus", type=int, default=64)
     m5_cmd.add_argument("--episodes", type=int, default=60)
     m5_cmd.add_argument("--seeds", type=int, nargs="+", default=[11, 22, 33])
+    hybrid_cmd = commands.add_parser("m5-hybrid-run", help="evaluate baseline plus RL residual")
+    hybrid_cmd.add_argument("--data", type=Path, required=True)
+    hybrid_cmd.add_argument("--output", type=Path, default=Path("artifacts/m5-ca4-hybrid"))
+    hybrid_cmd.add_argument("--store", default="CA_4")
+    hybrid_cmd.add_argument("--skus", type=int, default=64)
+    hybrid_cmd.add_argument("--episodes", type=int, default=60)
+    hybrid_cmd.add_argument("--seeds", type=int, nargs="+", default=[11, 22, 33])
     args = parser.parse_args()
     if args.command == "train":
         report = train(args.episodes, args.seed, args.output)
     elif args.command == "evaluate":
         agent, config, _ = load_model(args.model)
         report = compare(agent, config, list(range(10_000, 10_030)))
-    else:
+    elif args.command == "m5-run":
         report = run_m5(args.data, args.output, store_id=args.store, sku_count=args.skus,
                         episodes=args.episodes, seeds=tuple(args.seeds))
+    else:
+        report = run_hybrid(args.data, args.output, store_id=args.store, sku_count=args.skus,
+                            episodes=args.episodes, seeds=tuple(args.seeds))
     print(json.dumps(report, indent=2))
 
 

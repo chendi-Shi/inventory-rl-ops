@@ -4,9 +4,11 @@ from pathlib import Path
 import numpy as np
 import pytest
 
+from inventory_rl.agent import DQNAgent
 from inventory_rl.m5 import load_m5
-from inventory_rl.m5_experiment import block_bootstrap_ci, run
-from inventory_rl.portfolio import PortfolioEnv, allocate
+from inventory_rl.m5_experiment import block_bootstrap_ci, replay, run
+from inventory_rl.m5_hybrid import run_hybrid
+from inventory_rl.portfolio import PortfolioEnv, allocate, residual_scores
 from inventory_rl.portfolio_artifact import load_portfolio_model, recommend_portfolio
 
 
@@ -82,3 +84,27 @@ def test_end_to_end_m5_pipeline_and_block_ci():
                                stock=np.full(8, 10), pipeline=np.zeros((3, 8)),
                                last_sales=np.ones((8, 7)), force_rl=True)
     assert demo["policy_type"] == "rl_unpromoted"
+
+
+def test_residual_zero_is_exact_rule_and_hybrid_report_is_auditable():
+    rule = np.array([[0.0, -1.0, -4.0, -9.0], [0.0, -2.0, -8.0, -18.0]])
+    q_values = np.array([[1.0, 2.0, 3.0, 4.0], [2.0, 3.0, 5.0, 8.0]])
+    np.testing.assert_array_equal(residual_scores(rule, q_values, 0), rule)
+    assert np.isfinite(residual_scores(rule, q_values, 0.25)).all()
+    path = Path("artifacts/_test_m5.csv")
+    write_m5_fixture(path)
+    data = load_m5(path, sku_count=8, train_end=500, validation_end=550)
+    config = PortfolioEnv(data).config
+    rule_result = replay(data, config, 550, 600, cover=2.0, recent=False)
+    zero_residual = replay(data, config, 550, 600, DQNAgent(8, 4), cover=2.0,
+                           recent=False, hybrid_alpha=0.0)
+    assert zero_residual["daily_profit"] == rule_result["daily_profit"]
+    output = Path("artifacts/_test_m5_hybrid")
+    report = run_hybrid(path, output, store_id="CA_1", sku_count=8, seeds=(1,),
+                        episodes=1, alphas=(0.0, 0.25), train_end=500, validation_end=550)
+    assert report["model_selection"]["candidate_count"] == 2
+    assert report["model_selection"]["selected_alpha"] in (0.0, 0.25)
+    assert report["test"]["candidate"]["days"] == 50
+    _, manifest = load_portfolio_model(output)
+    assert manifest["schema_version"] == 3
+    assert manifest["hybrid_alpha"] == report["model_selection"]["selected_alpha"]

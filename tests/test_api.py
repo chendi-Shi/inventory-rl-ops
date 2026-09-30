@@ -35,5 +35,15 @@ def test_unpromoted_api_uses_baseline_and_labels_demo_override(monkeypatch):
         assert recommendation["spend"] <= 2 * PortfolioConfig().budget_per_sku
         monkeypatch.setenv("ALLOW_UNPROMOTED", "1")
         assert recommend_many(request)["policy_type"] == "rl_unpromoted"
+        hybrid_directory = Path("artifacts/_test_api_hybrid_bundle")
+        save_portfolio_model(DQNAgent(8, 4), data, PortfolioConfig(), hybrid_directory, False,
+                             baseline_recent=False, baseline_cover=2.0, hybrid_alpha=0.25)
+        monkeypatch.setenv("PORTFOLIO_MODEL_DIR", str(hybrid_directory))
+        monkeypatch.delenv("ALLOW_UNPROMOTED")
+        portfolio_model_bundle.cache_clear()
+        assert portfolio_health()["active_policy"] == "base_stock"
+        assert recommend_many(request)["policy_type"] == "base_stock"
+        monkeypatch.setenv("ALLOW_UNPROMOTED", "1")
+        assert recommend_many(request)["policy_type"] == "hybrid_unpromoted"
     finally:
         portfolio_model_bundle.cache_clear()

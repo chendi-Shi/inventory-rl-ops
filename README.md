@@ -30,6 +30,18 @@ The command writes `report.json`, `portfolio_model.npz`, and `portfolio_manifest
 
 The official CSV is excluded from Git. Its Zenodo MD5 is `26a366a25beb57b0a8f4c7b148758f94`; the tested copy's SHA-256 is recorded in [the results](docs/M5_RESULTS.md). Without the CSV, `pytest` runs an end-to-end M5-schema fixture through the same loader, training loop, artifact checks and constrained recommendation path. A separate 3-SKU synthetic smoke test remains in the repo to validate simulator invariants; its [numbers](docs/synthetic-results.json) are explicitly separate from the M5 experiment.
 
+## Residual-RL experiment on CA_4
+
+The [version 3 plan](docs/HYBRID_PLAN.md) was committed before CA_4 test evaluation. It combines the tuned rule with a scaled Double DQN residual; `alpha=0` reproduces the rule exactly. Candidate weights and seeds are selected on validation only. Run the fixed experiment with:
+
+```bash
+inventory-rl m5-hybrid-run --data data/m5/sales_train_validation.csv \
+  --store CA_4 --skus 64 --episodes 60 --seeds 11 22 33 \
+  --output artifacts/m5-ca4-hybrid
+```
+
+The CA_4 test period is reserved for one final comparison. An unpromoted residual policy falls back to the tuned rule in the API.
+
 ## Deployment boundary
 
 The optional FastAPI service has `/v2/health` and `/v2/portfolio/recommendations`. It checks bundle integrity and portfolio dimensions, enforces budget and capacity, and **falls back to the validation-tuned base-stock rule when RL fails the offline promotion gate**. Responses name the active policy. Set `PORTFOLIO_MODEL_DIR` to the M5 artifact directory and run `uvicorn inventory_rl.api:app --host 127.0.0.1 --port 8000`. `ALLOW_UNPROMOTED=1` explicitly labels and enables the unpromoted RL policy for local demonstrations only. The repository also contains a Dockerfile; mount the reviewed artifact at `/models`.
@@ -49,6 +61,7 @@ Do not describe the −1.45% as a real retail profit change. M5 provides observe
 | M5 data ingestion and time split | `src/inventory_rl/m5.py` |
 | Multi-SKU simulator and constrained allocator | `src/inventory_rl/portfolio.py` |
 | Training, baseline tuning, test and bootstrap | `src/inventory_rl/m5_experiment.py` |
+| Residual RL experiment | `src/inventory_rl/m5_hybrid.py`, `docs/HYBRID_PLAN.md` |
 | Portable policy bundle and inference | `src/inventory_rl/portfolio_artifact.py`, `src/inventory_rl/api.py` |
 | Automated checks | `tests/`, `.github/workflows/ci.yml` |
 | Official-data evaluation and limitations | `docs/CROSS_STORE_RESULTS.md`, `docs/M5_RESULTS.md`, `docs/M5_PROTOCOL.md` |
