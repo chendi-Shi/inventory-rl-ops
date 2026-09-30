@@ -15,6 +15,7 @@ from inventory_rl.m5_experiment import run as run_m5
 from inventory_rl.m5_guided import run_guided
 from inventory_rl.m5_hybrid import run_hybrid
 from inventory_rl.m5_policy_search import run_policy_search
+from inventory_rl.m5_transfer import run_transfer
 
 
 def train(episodes: int, seed: int, output: Path) -> dict:
@@ -95,6 +96,13 @@ def main() -> None:
     search_cmd.add_argument("--output", type=Path, default=Path("artifacts/m5-wi1-policy-search"))
     search_cmd.add_argument("--store", default="WI_1")
     search_cmd.add_argument("--skus", type=int, default=64)
+    transfer_cmd = commands.add_parser("m5-transfer-run",
+                                       help="test frozen actor on other M5 stores")
+    transfer_cmd.add_argument("--data", type=Path, required=True)
+    transfer_cmd.add_argument("--actor", type=Path, default=Path("models/wi1-policy-search"))
+    transfer_cmd.add_argument("--output", type=Path, default=Path("artifacts/m5-wi-transfer"))
+    transfer_cmd.add_argument("--stores", nargs="+", default=["WI_2", "WI_3"])
+    transfer_cmd.add_argument("--skus", type=int, default=64)
     args = parser.parse_args()
     if args.command == "train":
         report = train(args.episodes, args.seed, args.output)
@@ -112,9 +120,12 @@ def main() -> None:
                             episodes=args.episodes, seeds=tuple(args.seeds))
     elif args.command == "m5-allocation-run":
         report = run_allocation(args.data, args.output, store_id=args.store, sku_count=args.skus)
-    else:
+    elif args.command == "m5-policy-search-run":
         report = run_policy_search(args.data, args.output, store_id=args.store,
                                    sku_count=args.skus)
+    else:
+        report = run_transfer(args.data, args.actor, args.output,
+                              stores=tuple(args.stores), sku_count=args.skus)
     print(json.dumps(report, indent=2))
 
 

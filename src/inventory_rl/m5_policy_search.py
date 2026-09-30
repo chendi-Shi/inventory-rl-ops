@@ -8,45 +8,22 @@ import numpy as np
 
 from inventory_rl.m5 import M5Series, load_m5
 from inventory_rl.m5_experiment import block_bootstrap_ci, replay
+from inventory_rl.policy_search_artifact import save_actor_model
 from inventory_rl.portfolio import (
-    ORDER_CHOICES,
     PortfolioConfig,
     PortfolioEnv,
     allocate,
-    base_stock_scores,
+    policy_search_scores,
 )
 
 N_FEATURES = 5
 
 
-def actor_features(env: PortfolioEnv) -> np.ndarray:
-    """Normalized observable features shared by all SKUs and policy checkpoints."""
-    sales = env.last_sales
-    mean = env.mean_train
-    denom = mean + 1.0
-    trend = np.clip((sales.mean(axis=1) - mean) / denom, -2.0, 2.0)
-    momentum = np.clip((sales[:, -3:].mean(axis=1) - sales[:, :4].mean(axis=1)) /
-                       denom, -2.0, 2.0)
-    volatility = np.clip(sales.std(axis=1) / denom, 0.0, 3.0)
-    lead = (env.lead - 2.0).astype(np.float64)
-    phase = np.full(env.data.n_sku, np.sin(2 * np.pi * env.day / 7))
-    return np.column_stack((trend, momentum, volatility, lead, phase))
-
-
 def actor_scores(env: PortfolioEnv, theta: np.ndarray, *, cover: float,
                  recent: bool) -> np.ndarray:
-    if theta.shape != (N_FEATURES,) or not np.isfinite(theta).all():
-        raise ValueError("invalid policy-search coefficients")
-    if not np.isfinite(cover) or cover < 0:
-        raise ValueError("invalid baseline coverage")
-    if not theta.any():
-        return base_stock_scores(env.stock, env.pipeline.sum(axis=0), env.last_sales,
-                                 env.mean_train, env.lead, cover=cover, recent=recent)
-    rate = env.last_sales.mean(axis=1) if recent else env.mean_train
-    residual = 2.0 * np.tanh(actor_features(env) @ theta)
-    desired = np.maximum(rate * (env.lead + cover + residual) - env.stock -
-                         env.pipeline.sum(axis=0), 0)
-    return -((ORDER_CHOICES[None, :] - desired[:, None]) ** 2) / (rate[:, None] + 1)
+    return policy_search_scores(env.stock, env.pipeline.sum(axis=0), env.last_sales,
+                                env.mean_train, env.lead, env.day, theta,
+                                cover=cover, recent=recent)
 
 
 def replay_actor(data: M5Series, config: PortfolioConfig, start: int, end: int,
@@ -172,5 +149,7 @@ def run_policy_search(path: Path, output: Path, *, store_id: str = "WI_1",
         "caveat": "Observed sales are a censored demand proxy; economics and lead times are simulated.",
     }
     output.mkdir(parents=True, exist_ok=True)
+    save_actor_model(selected["theta"], data, config, output, bool(eligible),
+                     baseline_cover=cover, baseline_recent=recent)
     (output / "report.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     return report

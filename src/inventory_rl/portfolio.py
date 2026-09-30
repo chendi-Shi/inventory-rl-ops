@@ -20,6 +20,32 @@ def base_stock_scores(stock: np.ndarray, pipeline: np.ndarray, last_sales: np.nd
     return -((ORDER_CHOICES[None, :] - desired[:, None]) ** 2) / (rate[:, None] + 1) ** beta
 
 
+def policy_search_scores(stock: np.ndarray, pipeline: np.ndarray,
+                         last_sales: np.ndarray, mean_train: np.ndarray,
+                         lead: np.ndarray, day: int, theta: np.ndarray, *,
+                         cover: float, recent: bool) -> np.ndarray:
+    """State-dependent cover adjustment learned from whole-portfolio return."""
+    if theta.shape != (5,) or not np.isfinite(theta).all():
+        raise ValueError("invalid policy-search coefficients")
+    if not np.isfinite(cover) or cover < 0:
+        raise ValueError("invalid baseline coverage")
+    if not theta.any():
+        return base_stock_scores(stock, pipeline, last_sales, mean_train, lead,
+                                 cover=cover, recent=recent)
+    denom = mean_train + 1.0
+    trend = np.clip((last_sales.mean(axis=1) - mean_train) / denom, -2.0, 2.0)
+    momentum = np.clip((last_sales[:, -3:].mean(axis=1) -
+                        last_sales[:, :4].mean(axis=1)) / denom, -2.0, 2.0)
+    volatility = np.clip(last_sales.std(axis=1) / denom, 0.0, 3.0)
+    lead_feature = (lead - 2.0).astype(np.float64)
+    phase = np.full(len(stock), np.sin(2 * np.pi * day / 7))
+    features = np.column_stack((trend, momentum, volatility, lead_feature, phase))
+    rate = last_sales.mean(axis=1) if recent else mean_train
+    residual = 2.0 * np.tanh(features @ theta)
+    desired = np.maximum(rate * (lead + cover + residual) - stock - pipeline, 0)
+    return -((ORDER_CHOICES[None, :] - desired[:, None]) ** 2) / (rate[:, None] + 1)
+
+
 def residual_scores(rule: np.ndarray, q_values: np.ndarray, alpha: float) -> np.ndarray:
     """Add a scaled Q-value residual without changing the exact alpha-zero rule."""
     if rule.shape != q_values.shape or rule.ndim != 2 or rule.shape[1] != len(ORDER_CHOICES):

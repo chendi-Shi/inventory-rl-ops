@@ -11,6 +11,7 @@ from inventory_rl.m5_experiment import block_bootstrap_ci, replay, run
 from inventory_rl.m5_guided import run_guided
 from inventory_rl.m5_hybrid import run_hybrid
 from inventory_rl.m5_policy_search import actor_scores, replay_actor, run_policy_search
+from inventory_rl.m5_transfer import run_transfer
 from inventory_rl.portfolio import PortfolioEnv, allocate, base_stock_scores, residual_scores
 from inventory_rl.portfolio_artifact import load_portfolio_model, recommend_portfolio
 
@@ -179,3 +180,7 @@ def test_portfolio_policy_search_anchors_exact_rule_and_records_selection():
     assert report["test"]["active_policy"] == (
         "policy_search_rl" if report["test"]["promotion_eligible"] else "base_stock"
     )
+    transfer = run_transfer(path, Path("artifacts/_test_policy_search"),
+                            Path("artifacts/_test_transfer"), stores=("CA_1",),
+                            sku_count=8, train_end=500, validation_end=550)
+    assert transfer["stores"]["CA_1"]["test"]["actor"]["days"] == 50
