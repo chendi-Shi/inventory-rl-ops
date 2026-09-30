@@ -6,6 +6,8 @@ A portfolio-scale reinforcement learning system for **64 SKUs sharing one wareho
 
 The separately predeclared [CA_4 residual-RL study](docs/HYBRID_RESULTS.md) selected a nonzero RL adjustment on validation but finished **0.16% below** the tuned rule on its untouched test period. Its release gate also chose the baseline. All outcomes, including unfavorable ones, are published.
 
+After reviewing [heuristic-guided inventory RL](https://github.com/qihuazhong/multi-echelon-drl) and the [OR-Gym inventory benchmark](https://github.com/r2barati/or-gym-inventory), we added a guided-exploration ablation on the previously unused TX_1 store. The guided model won on validation but was **0.14% below** the tuned rule on test; the unguided model was **0.06% above**, with a confidence interval crossing zero. Neither qualified for deployment. [Plan](docs/GUIDED_EXPLORATION_PLAN.md) · [Results](docs/GUIDED_EXPLORATION_RESULTS.md).
+
 ## Why this is an RL problem
 
 Each daily order affects future inventory because item lead times span one to three days. The agent trades service level, holding cost, purchasing cost and lost sales while it competes for a **shared** budget and storage space. It receives each SKU's stock, outstanding orders, recent sales, historical sales level, lead time, and weekly phase. The network scores four pack choices per item (0, 4, 8, 16 units). A deterministic marginal-value allocator coordinates all 64 scores into one feasible portfolio order. The simulator checks both hard constraints before every transition.
@@ -44,6 +46,18 @@ inventory-rl m5-hybrid-run --data data/m5/sales_train_validation.csv \
 
 The CA_4 test period was used once for the [published comparison](docs/HYBRID_RESULTS.md). An unpromoted residual policy falls back to the tuned rule in the API.
 
+## Heuristic-guided exploration ablation on TX_1
+
+The [predeclared TX_1 plan](docs/GUIDED_EXPLORATION_PLAN.md) compares the original trainer with a trainer that sometimes follows a fixed base-stock rule during early exploration. Both use the same M5 split, seeds, constrained allocator and evaluation gate. Reproduce it with:
+
+```bash
+inventory-rl m5-guided-run --data data/m5/sales_train_validation.csv \
+  --store TX_1 --skus 64 --episodes 60 --seeds 11 22 33 \
+  --output artifacts/m5-tx1-guided
+```
+
+The [TX_1 result](docs/GUIDED_EXPLORATION_RESULTS.md) is a negative ablation result: rule guidance did not improve out-of-sample profit. The report preserves both training families and all validation candidates. The active API policy remains the validation-tuned rule.
+
 ## Deployment boundary
 
 The optional FastAPI service has `/v2/health` and `/v2/portfolio/recommendations`. It checks bundle integrity and portfolio dimensions, enforces budget and capacity, and **falls back to the validation-tuned base-stock rule when RL fails the offline promotion gate**. Responses name the active policy. Set `PORTFOLIO_MODEL_DIR` to the M5 artifact directory and run `uvicorn inventory_rl.api:app --host 127.0.0.1 --port 8000`. `ALLOW_UNPROMOTED=1` explicitly labels and enables the unpromoted RL policy for local demonstrations only. The repository also contains a Dockerfile; mount the reviewed artifact at `/models`.
@@ -52,7 +66,7 @@ The gate requires the lower 95% bound of paired profit uplift to be positive, a 
 
 ## What can go on a resume
 
-> Built a 64-SKU, shared-budget inventory RL platform on M5 item-level sales with a factored Double DQN and a baseline-plus-RL residual candidate, action feasibility checks, chronological model selection, block-bootstrap evaluation, model manifest and guarded FastAPI serving. Across four store-level tests, no RL candidate passed the release gate; the service selected the tuned replenishment rule rather than claiming an unsupported uplift.
+> Built a 64-SKU, shared-budget inventory RL platform on M5 item-level sales with a factored Double DQN, residual and heuristic-guided exploration ablations, action feasibility checks, chronological model selection, block-bootstrap evaluation, model manifest and guarded FastAPI serving. Across five store-level tests, no RL candidate passed the release gate; the service selected the tuned replenishment rule rather than claiming an unsupported uplift.
 
 Do not describe any of these simulated differences as real retail profit changes. M5 provides observed sales, which may be censored by historical stockouts; procurement costs, lead times and capacity in this project are simulated. The project demonstrates rigorous decision-system engineering and a release decision, not a proven business uplift.
 
@@ -66,6 +80,7 @@ Do not describe any of these simulated differences as real retail profit changes
 | Multi-SKU simulator and constrained allocator | `src/inventory_rl/portfolio.py` |
 | Training, baseline tuning, test and bootstrap | `src/inventory_rl/m5_experiment.py` |
 | Residual RL experiment | `src/inventory_rl/m5_hybrid.py`, `docs/HYBRID_PLAN.md`, `docs/HYBRID_RESULTS.md` |
+| Guided exploration ablation | `src/inventory_rl/m5_guided.py`, `docs/GUIDED_EXPLORATION_PLAN.md`, `docs/GUIDED_EXPLORATION_RESULTS.md` |
 | Portable policy bundle and inference | `src/inventory_rl/portfolio_artifact.py`, `src/inventory_rl/api.py` |
 | Automated checks | `tests/`, `.github/workflows/ci.yml` |
 | Official-data evaluation and limitations | `docs/CROSS_STORE_RESULTS.md`, `docs/M5_RESULTS.md`, `docs/M5_PROTOCOL.md` |
