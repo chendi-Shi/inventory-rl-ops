@@ -23,7 +23,7 @@ Training used days 1–1700. Validation used days 1701–1800 to select a policy
 | Mean daily purchasing spend | 2,047.9 | 2,048.0 | 749.7 |
 | 10th-percentile daily profit | 1,600.8 | 1,709.2 | −1,147.8 |
 
-The paired profit difference (RL minus rule) is **−3,935.0 simulated units**, or **−1.45%** of the rule's profit. A paired, circular 7-day-block bootstrap gives a 95% interval of **[−8,691.3, 1,415.6]** for the total difference. This interval crosses zero. The fill-rate drop of 0.11 percentage points passes the two-point guard, while the 10th-percentile daily-profit guard fails. The model was **not promoted**; the default API returns a conflict response for this bundle.
+The paired profit difference (RL minus rule) is **−3,935.0 simulated units**, or **−1.45%** of the rule's profit. A paired, circular 7-day-block bootstrap gives a 95% interval of **[−8,691.3, 1,415.6]** for the total difference. This interval crosses zero. The fill-rate drop of 0.11 percentage points passes the two-point guard, while the 10th-percentile daily-profit guard fails. The RL model was **not promoted**. In the version 2 bundle, the default API serves the validation-tuned base-stock rule and labels it `base_stock`.
 
 ## Interpretation
 

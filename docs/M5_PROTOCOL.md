@@ -28,6 +28,6 @@ The uncertainty interval resamples **paired** daily profit differences in 7-day 
 
 ## Release rule and next steps
 
-The service blocks a bundle unless it passes all three test checks: positive lower 95% paired profit bound, fill-rate drop no greater than two percentage points, and 10th-percentile daily profit at least as high as the rule. The test set is used to accept or reject the fixed candidate, not to retune it.
+The service promotes RL only if it passes all three test checks: positive lower 95% paired profit bound, fill-rate drop no greater than two percentage points, and 10th-percentile daily profit at least as high as the rule. Otherwise version 2 serves the validation-tuned base-stock rule. The test set is used to accept or reject the fixed candidate, not to retune it.
 
 For a production study, obtain actual inventory, stockout, supplier lead-time and margin records; compare tuned `(s,S)` and mixed-integer replenishment; calibrate a censored-demand model; evaluate multiple stores and time origins; add authenticated serving, audit trails, drift and service-level monitoring, a human override, and a shadow rollout. No production impact is claimed by this repository.

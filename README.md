@@ -2,7 +2,7 @@
 
 A portfolio-scale reinforcement learning system for **64 SKUs sharing one warehouse budget and storage capacity**. Its main experiment replays item-level sales from the [M5 Walmart retail dataset](https://doi.org/10.5281/zenodo.10203108), trains a shared-network factored Double DQN, tunes a credible replenishment baseline on a separate validation period, and evaluates once on a future test period. It includes a versioned decision bundle, a constrained batch recommendation API, CI, and conservative promotion rules.
 
-**Verification status:** the complete M5 pipeline passes automated end-to-end tests and has been run on the official 120 MB M5 CSV. On the 113-day CA_1 holdout, Double DQN earned **266,565.7 simulated profit units** against **270,500.7** for a validation-tuned base-stock rule (−1.45%). The paired 95% block-bootstrap interval for the profit difference is **[−8,691.3, 1,415.6]**. The policy failed the offline promotion gate and is blocked from serving by default. [Full results and interpretation](docs/M5_RESULTS.md) · [Machine-readable report](docs/m5-ca1-report.json). These are simulated economics, not observed business profit.
+**Verification status:** the complete M5 pipeline passes automated end-to-end tests and has been run on the official 120 MB M5 CSV. Across three CA stores, the pure Double DQN candidate underperformed a validation-tuned replenishment rule by **1.45%, 5.31% and 1.63%** in simulated profit on separate 113-day test windows. The RL policy failed the offline promotion gate; the decision service serves the validated base-stock rule by default. [Cross-store results](docs/CROSS_STORE_RESULTS.md) · [CA_1 report](docs/m5-ca1-report.json). These are simulated economics, not observed business profit.
 
 ## Why this is an RL problem
 
@@ -32,13 +32,13 @@ The official CSV is excluded from Git. Its Zenodo MD5 is `26a366a25beb57b0a8f4c7
 
 ## Deployment boundary
 
-The optional FastAPI service has `/v2/health` and `/v2/portfolio/recommendations`. It checks bundle integrity and portfolio dimensions, enforces budget and capacity, and **refuses recommendations if the offline promotion gate failed**. Set `PORTFOLIO_MODEL_DIR` to the M5 artifact directory and run `uvicorn inventory_rl.api:app --host 127.0.0.1 --port 8000`. `ALLOW_UNPROMOTED=1` enables local demonstrations only. The repository also contains a Dockerfile; mount the reviewed artifact at `/models` and set `PORTFOLIO_MODEL_DIR=/models`.
+The optional FastAPI service has `/v2/health` and `/v2/portfolio/recommendations`. It checks bundle integrity and portfolio dimensions, enforces budget and capacity, and **falls back to the validation-tuned base-stock rule when RL fails the offline promotion gate**. Responses name the active policy. Set `PORTFOLIO_MODEL_DIR` to the M5 artifact directory and run `uvicorn inventory_rl.api:app --host 127.0.0.1 --port 8000`. `ALLOW_UNPROMOTED=1` explicitly labels and enables the unpromoted RL policy for local demonstrations only. The repository also contains a Dockerfile; mount the reviewed artifact at `/models`.
 
-The gate requires the lower 95% bound of paired profit uplift to be positive, a fill-rate drop of at most two percentage points, and no drop in 10th-percentile daily profit against the validation-tuned base-stock rule. Passing the gate is a research result, not purchasing approval. The API does not include authentication, monitoring or integration with an ERP.
+The gate requires the lower 95% bound of paired profit uplift to be positive, a fill-rate drop of at most two percentage points, and no drop in 10th-percentile daily profit against the validation-tuned base-stock rule. Passing the gate is a research result, not purchasing approval. A [predeclared cross-store evaluation](docs/CROSS_STORE_PLAN.md) tests the pipeline in CA_2 and CA_3. The API does not include authentication, monitoring or integration with an ERP.
 
 ## What can go on a resume
 
-> Built a 64-SKU, shared-budget inventory RL platform on M5 item-level sales with a factored Double DQN, action feasibility checks, chronological model selection, tuned operations baseline, block-bootstrap evaluation, model manifest and guarded FastAPI serving. The first real-data backtest found a −1.45% simulated profit gap to the tuned rule; the release gate blocked deployment.
+> Built a 64-SKU, shared-budget inventory RL platform on M5 item-level sales with a factored Double DQN, action feasibility checks, chronological model selection, tuned operations baseline, block-bootstrap evaluation, model manifest and guarded FastAPI serving. The first real-data backtest found a −1.45% simulated profit gap to the tuned rule; the release gate selected the rule for serving.
 
 Do not describe the −1.45% as a real retail profit change. M5 provides observed sales, which may be censored by historical stockouts; procurement costs, lead times and capacity in this project are simulated. The project demonstrates rigorous decision-system engineering and a release decision, not a proven business uplift.
 
@@ -51,5 +51,5 @@ Do not describe the −1.45% as a real retail profit change. M5 provides observe
 | Training, baseline tuning, test and bootstrap | `src/inventory_rl/m5_experiment.py` |
 | Portable policy bundle and inference | `src/inventory_rl/portfolio_artifact.py`, `src/inventory_rl/api.py` |
 | Automated checks | `tests/`, `.github/workflows/ci.yml` |
-| Official-data evaluation and limitations | `docs/M5_RESULTS.md`, `docs/m5-ca1-report.json`, `docs/M5_PROTOCOL.md` |
+| Official-data evaluation and limitations | `docs/CROSS_STORE_RESULTS.md`, `docs/M5_RESULTS.md`, `docs/M5_PROTOCOL.md` |
 | Small synthetic component benchmark | `src/inventory_rl/env.py`, `docs/synthetic-results.json` |
