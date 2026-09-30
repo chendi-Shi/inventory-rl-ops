@@ -11,6 +11,7 @@ from inventory_rl.artifact import load_model, save_model
 from inventory_rl.env import InventoryConfig, InventoryEnv
 from inventory_rl.evaluation import compare
 from inventory_rl.m5_experiment import run as run_m5
+from inventory_rl.m5_guided import run_guided
 from inventory_rl.m5_hybrid import run_hybrid
 
 
@@ -74,6 +75,13 @@ def main() -> None:
     hybrid_cmd.add_argument("--skus", type=int, default=64)
     hybrid_cmd.add_argument("--episodes", type=int, default=60)
     hybrid_cmd.add_argument("--seeds", type=int, nargs="+", default=[11, 22, 33])
+    guided_cmd = commands.add_parser("m5-guided-run", help="compare guided and unguided M5 training")
+    guided_cmd.add_argument("--data", type=Path, required=True)
+    guided_cmd.add_argument("--output", type=Path, default=Path("artifacts/m5-tx1-guided"))
+    guided_cmd.add_argument("--store", default="TX_1")
+    guided_cmd.add_argument("--skus", type=int, default=64)
+    guided_cmd.add_argument("--episodes", type=int, default=60)
+    guided_cmd.add_argument("--seeds", type=int, nargs="+", default=[11, 22, 33])
     args = parser.parse_args()
     if args.command == "train":
         report = train(args.episodes, args.seed, args.output)
@@ -83,8 +91,11 @@ def main() -> None:
     elif args.command == "m5-run":
         report = run_m5(args.data, args.output, store_id=args.store, sku_count=args.skus,
                         episodes=args.episodes, seeds=tuple(args.seeds))
-    else:
+    elif args.command == "m5-hybrid-run":
         report = run_hybrid(args.data, args.output, store_id=args.store, sku_count=args.skus,
+                            episodes=args.episodes, seeds=tuple(args.seeds))
+    else:
+        report = run_guided(args.data, args.output, store_id=args.store, sku_count=args.skus,
                             episodes=args.episodes, seeds=tuple(args.seeds))
     print(json.dumps(report, indent=2))
 

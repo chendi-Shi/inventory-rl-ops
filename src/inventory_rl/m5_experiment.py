@@ -72,9 +72,12 @@ def block_bootstrap_ci(a: list[float], b: list[float], *, block: int = 7,
 
 
 def train_one(data: M5Series, config: PortfolioConfig, seed: int,
-              episodes: int = 60, window: int = 84) -> tuple[DQNAgent, dict]:
+              episodes: int = 60, window: int = 84,
+              guidance_start: float = 0.0) -> tuple[DQNAgent, dict]:
     if episodes < 1 or window < 7 or data.train_end - window <= 365:
         raise ValueError("not enough training history or invalid training settings")
+    if not np.isfinite(guidance_start) or not 0 <= guidance_start <= 1:
+        raise ValueError("guidance_start must be a probability")
     rng = np.random.default_rng(seed)
     agent = DQNAgent(8, len(ORDER_CHOICES), seed=seed, batch_size=128,
                      warmup=512, replay_capacity=30_000)
@@ -87,9 +90,13 @@ def train_one(data: M5Series, config: PortfolioConfig, seed: int,
         state = env.reset(start, start + window)
         epsilon = max(0.05, 0.8 * (1 - episode / episodes))
         for _ in range(window):
-            scores = agent.online.predict(state)
-            if rng.random() < epsilon:
-                scores = rng.random(scores.shape)
+            guidance = guidance_start * (1 - episode / episodes)
+            if guidance > 0 and rng.random() < guidance:
+                scores = rule_scores(env, cover=2.0, recent=False)
+            else:
+                scores = agent.online.predict(state)
+                if rng.random() < epsilon:
+                    scores = rng.random(scores.shape)
             orders = allocate(scores, stock=env.stock, pipeline=env.pipeline.sum(axis=0),
                               budget=env.budget, capacity=env.capacity,
                               unit_cost=config.unit_cost)
@@ -111,6 +118,7 @@ def train_one(data: M5Series, config: PortfolioConfig, seed: int,
         agent.online.params[key][...] = value
     agent.target.copy_from(agent.online)
     return agent, {"seed": seed, "episodes": episodes, "window": window,
+                   "guidance_start": guidance_start,
                    "validation_history": history,
                    "selected_episode": max(history, key=lambda x: x["validation_profit"])["episode"]}
 

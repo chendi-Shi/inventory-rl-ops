@@ -7,6 +7,7 @@ import pytest
 from inventory_rl.agent import DQNAgent
 from inventory_rl.m5 import load_m5
 from inventory_rl.m5_experiment import block_bootstrap_ci, replay, run
+from inventory_rl.m5_guided import run_guided
 from inventory_rl.m5_hybrid import run_hybrid
 from inventory_rl.portfolio import PortfolioEnv, allocate, residual_scores
 from inventory_rl.portfolio_artifact import load_portfolio_model, recommend_portfolio
@@ -107,4 +108,21 @@ def test_residual_zero_is_exact_rule_and_hybrid_report_is_auditable():
     assert report["test"]["candidate"]["days"] == 50
     _, manifest = load_portfolio_model(output)
     assert manifest["schema_version"] == 3
+    assert manifest["hybrid_alpha"] == report["model_selection"]["selected_alpha"]
+
+
+def test_guided_ablation_preserves_family_comparison_and_fallback():
+    path = Path("artifacts/_test_m5.csv")
+    write_m5_fixture(path)
+    output = Path("artifacts/_test_m5_guided")
+    report = run_guided(path, output, store_id="CA_1", sku_count=8, seeds=(1,),
+                        episodes=1, alphas=(0.0, 0.25), train_end=500,
+                        validation_end=550)
+    assert report["model_selection"]["candidate_count"] == 4
+    assert set(report["test"]["by_trainer"]) == {"guided", "unguided"}
+    assert report["test"]["selected"]["result"]["days"] == 50
+    assert report["test"]["active_policy"] == (
+        "hybrid_rl" if report["test"]["promotion_eligible"] else "base_stock"
+    )
+    _, manifest = load_portfolio_model(output)
     assert manifest["hybrid_alpha"] == report["model_selection"]["selected_alpha"]
