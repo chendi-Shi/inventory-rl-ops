@@ -4,6 +4,8 @@ A portfolio-scale reinforcement learning system for **64 SKUs sharing one wareho
 
 **Verified offline result:** an actor trained on **total portfolio return** by episodic policy search improved simulated profit on the predeclared WI_1 test by **4,590.80 units (+1.51%)** over the tuned rule. The paired seven-day-block 95% interval was **[+805.82, +8,490.15]**; fill rate and 10th-percentile daily profit also improved, so the actor passed the offline promotion gate. [WI_1 plan](docs/PORTFOLIO_POLICY_SEARCH_PLAN.md) · [Result](docs/PORTFOLIO_POLICY_SEARCH_RESULTS.md) · [Model bundle](models/wi1-policy-search). This is **simulated** profit, not an observed business result.
 
+**Second held-out result:** a separately trained context-aware actor improved TX_3 simulated profit by **3,768.80 units (+1.49%)** over a stronger rule selected from 48 validation candidates. The paired 95% interval was **[+763.18, +6,993.33]**; fill rate and downside daily profit also improved. [TX_3 plan](docs/CONTEXT_ACTOR_PLAN.md) · [Result](docs/CONTEXT_ACTOR_RESULTS.md) · [Model bundle](models/tx3-context). This actor adjusts SKU priority when the shared purchasing budget is scarce.
+
 The exact WI_1 coefficients **did not transfer** to WI_2 or WI_3: both test comparisons were −1.21% against their own tuned rules. [Predeclared transfer result](docs/TRANSFER_RESULTS.md). A [post-hoc stronger-rule sensitivity check](docs/STRONGER_BASELINE_SENSITIVITY.md) still left a +1.50% WI_1 actor advantage, but is labeled diagnostic because the WI_1 test had already been inspected.
 
 **Earlier experiments:** the complete M5 pipeline passes automated end-to-end tests and has been run on the official 120 MB M5 CSV. Across three CA stores, the pure Double DQN candidate underperformed a validation-tuned replenishment rule by **1.45%, 5.31% and 1.63%** in simulated profit on separate 113-day test windows. Those bundles still serve the validated base-stock rule. [Cross-store results](docs/CROSS_STORE_RESULTS.md) · [CA_1 report](docs/m5-ca1-report.json).
@@ -88,17 +90,28 @@ The command saves `report.json`, `actor_model.npz` and `actor_manifest.json`. Th
 
 The frozen-coefficient transfer check is reproducible with `inventory-rl m5-transfer-run --data data/m5/sales_train_validation.csv`; the [WI_2/WI_3 report](docs/TRANSFER_RESULTS.md) documents the failures. The stronger-rule diagnostic is reproducible with `inventory-rl m5-sensitivity-run --data data/m5/sales_train_validation.csv` and is explicitly post-hoc.
 
+## Context-aware SKU allocation on TX_3
+
+The [TX_3 protocol](docs/CONTEXT_ACTOR_PLAN.md) extends portfolio-return policy search with observable stock gaps, pipeline coverage, sales velocity and global budget pressure. The rule comparator is chosen from 48 validation configurations. Zero actor coefficients exactly reproduce that strong rule. Reproduce the predeclared holdout with:
+
+```bash
+inventory-rl m5-context-run --data data/m5/sales_train_validation.csv \
+  --store TX_3 --skus 64 --output artifacts/m5-tx3-context
+```
+
+The two development validation runs are reproduced with `inventory-rl m5-context-dev --data data/m5/sales_train_validation.csv --store WI_2` and the same command for `WI_3`; these commands do not evaluate test days. The [TX_3 result](docs/CONTEXT_ACTOR_RESULTS.md) passed the same offline release gate. Its reviewed [model bundle](models/tx3-context) can be served without the M5 source CSV.
+
 ## Deployment boundary
 
-The optional FastAPI service has `/v2/health`, `/v2/portfolio/recommendations`, `/v3/health` and `/v3/portfolio/recommendations`. It checks bundle integrity and portfolio dimensions, enforces budget and capacity, and falls back to the validation-tuned rule when a candidate fails the offline promotion gate. The v3 endpoint loads the included WI_1 actor bundle by default and reports `policy_search_rl`; v2 bundles from failed studies report `base_stock`. Set `POLICY_SEARCH_MODEL_DIR` to override the v3 bundle and run `uvicorn inventory_rl.api:app --host 127.0.0.1 --port 8000`. `ALLOW_UNPROMOTED=1` explicitly labels and enables an unpromoted RL policy for local demonstrations only. The repository also contains a Dockerfile.
+The optional FastAPI service has versioned health and recommendation endpoints. It checks bundle integrity and portfolio dimensions, enforces budget and capacity, and falls back to the validation-tuned rule when a candidate fails the offline promotion gate. `/v3/portfolio/recommendations` loads the promoted WI_1 actor; `/v4/portfolio/recommendations` loads the promoted TX_3 context actor. v2 bundles from failed studies report `base_stock`. Set `POLICY_SEARCH_MODEL_DIR` or `CONTEXT_MODEL_DIR` to override the included bundles and run `uvicorn inventory_rl.api:app --host 127.0.0.1 --port 8000`. `ALLOW_UNPROMOTED=1` explicitly labels and enables an unpromoted RL policy for local demonstrations only. The repository also contains a Dockerfile.
 
 The gate requires the lower 95% bound of paired profit uplift to be positive, a fill-rate drop of at most two percentage points, and no drop in 10th-percentile daily profit against the validation-tuned base-stock rule. Passing the gate is a research result, not purchasing approval. A [predeclared cross-store evaluation](docs/CROSS_STORE_PLAN.md) tests the pipeline in CA_2 and CA_3. The API does not include authentication, monitoring or integration with an ERP.
 
 ## What can go on a resume
 
-> Built a 64-SKU, shared-budget inventory RL platform on M5 item-level sales. Trained a state-dependent actor with episodic portfolio-return policy search; on a predeclared WI_1 holdout it improved **simulated profit by 1.51%** over a validation-tuned replenishment rule (paired 95% interval +0.27% to +2.79%), with higher fill rate and downside daily profit. Published negative DQN and cross-store transfer results, versioned model bundles, constrained FastAPI serving and CI.
+> Built a 64-SKU, shared-budget inventory RL platform on M5 item-level sales. Whole-portfolio policy-search actors improved **simulated profit by 1.51% on WI_1 and 1.49% on TX_3** in separately predeclared store-level tests against validation-tuned rules, with positive paired 95% lower bounds and higher fill rates. Published negative DQN and frozen-transfer results, versioned model bundles, constrained FastAPI serving and CI.
 
-Do not describe the simulated difference as a real retail profit change or claim that the fixed actor generalizes across stores. M5 provides observed sales, which may be censored by historical stockouts; procurement costs, lead times and capacity in this project are simulated. The promoted WI_1 actor is an offline research result, not purchasing authorization.
+Do not describe the simulated differences as real retail profit changes or claim that one fixed actor generalizes across stores. M5 provides observed sales, which may be censored by historical stockouts; procurement costs, lead times and capacity in this project are simulated. Both actors are offline research results, not purchasing authorization.
 
 [中文简历与面试表述](docs/RESUME_CN.md).
 
@@ -113,8 +126,9 @@ Do not describe the simulated difference as a real retail profit change or claim
 | Guided exploration ablation | `src/inventory_rl/m5_guided.py`, `docs/GUIDED_EXPLORATION_PLAN.md`, `docs/GUIDED_EXPLORATION_RESULTS.md` |
 | Allocation score study | `src/inventory_rl/m5_allocation.py`, `docs/ALLOCATION_PLAN.md`, `docs/ALLOCATION_RESULTS.md` |
 | Portfolio-return RL and transfer | `src/inventory_rl/m5_policy_search.py`, `src/inventory_rl/m5_transfer.py`, `docs/PORTFOLIO_POLICY_SEARCH_RESULTS.md`, `docs/TRANSFER_RESULTS.md` |
+| Context-aware actor on TX_3 | `src/inventory_rl/m5_context_actor.py`, `docs/CONTEXT_ACTOR_PLAN.md`, `docs/CONTEXT_ACTOR_RESULTS.md` |
 | Post-hoc stronger baseline check | `src/inventory_rl/m5_sensitivity.py`, `docs/STRONGER_BASELINE_SENSITIVITY.md` |
-| Portable policy bundle and inference | `src/inventory_rl/portfolio_artifact.py`, `src/inventory_rl/api.py` |
+| Portable policy bundles and inference | `src/inventory_rl/portfolio_artifact.py`, `src/inventory_rl/policy_search_artifact.py`, `src/inventory_rl/context_artifact.py`, `src/inventory_rl/api.py` |
 | Automated checks | `tests/`, `.github/workflows/ci.yml` |
 | Official-data evaluation and limitations | `docs/CROSS_STORE_RESULTS.md`, `docs/M5_RESULTS.md`, `docs/M5_PROTOCOL.md` |
 | Small synthetic component benchmark | `src/inventory_rl/env.py`, `docs/synthetic-results.json` |

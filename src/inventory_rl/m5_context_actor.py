@@ -5,15 +5,10 @@ from pathlib import Path
 
 import numpy as np
 
+from inventory_rl.context_artifact import save_context_model
 from inventory_rl.m5 import M5Series, load_m5
 from inventory_rl.m5_experiment import block_bootstrap_ci, replay
-from inventory_rl.portfolio import (
-    ORDER_CHOICES,
-    PortfolioConfig,
-    PortfolioEnv,
-    allocate,
-    base_stock_scores,
-)
+from inventory_rl.portfolio import PortfolioConfig, PortfolioEnv, allocate, context_policy_scores
 
 N_CONTEXT_FEATURES = 9
 COVER_GRID = (0.5, 1.0, 1.5, 2.0, 3.0, 4.0, 5.0, 6.0)
@@ -23,35 +18,11 @@ BETA_GRID = (0.0, 0.5, 1.0)
 def context_scores(env: PortfolioEnv, theta: np.ndarray, *, cover: float,
                    recent: bool, beta: float) -> np.ndarray:
     """Add a bounded SKU priority to the validation-selected rule scores."""
-    if theta.shape != (N_CONTEXT_FEATURES,) or not np.isfinite(theta).all():
-        raise ValueError("invalid context actor coefficients")
-    pipeline = env.pipeline.sum(axis=0)
-    rule = base_stock_scores(env.stock, pipeline, env.last_sales, env.mean_train,
-                             env.lead, cover=cover, recent=recent, beta=beta)
-    if not theta.any():
-        return rule
-    sales = env.last_sales
-    mean = env.mean_train
-    rate = sales.mean(axis=1) if recent else mean
-    denom = mean + 1.0
-    trend = np.clip((sales.mean(axis=1) - mean) / denom, -2, 2)
-    momentum = np.clip((sales[:, -3:].mean(axis=1) -
-                        sales[:, :4].mean(axis=1)) / denom, -2, 2)
-    volatility = np.clip(sales.std(axis=1) / denom, 0, 3)
-    gap = np.clip((rate * (env.lead + cover) - env.stock - pipeline) /
-                  (rate + 1), -4, 4) / 4
-    pipeline_cover = np.clip(pipeline / (rate + 1), 0, 6) / 6
-    velocity = np.clip(np.log1p(mean) / np.log(41), 0, 2)
-    lead = (env.lead - 2.0).astype(np.float64)
-    budget_units = env.budget / env.config.unit_cost
-    pressure = np.clip(rate.sum() / max(budget_units, 1) - 1, -2, 2)
-    global_pressure = np.full(env.data.n_sku, pressure)
-    phase = np.full(env.data.n_sku, np.sin(2 * np.pi * env.day / 7))
-    features = np.column_stack((trend, momentum, volatility, gap, pipeline_cover,
-                                velocity, lead, global_pressure, phase))
-    priority = np.tanh(features @ theta)
-    scale = float(np.median(np.abs(np.diff(rule, axis=1))))
-    return rule + scale * priority[:, None] * (ORDER_CHOICES[None, :] / 4.0)
+    return context_policy_scores(
+        env.stock, env.pipeline.sum(axis=0), env.last_sales,
+        env.mean_train, env.lead, env.day, env.budget,
+        env.config.unit_cost, theta, cover=cover, recent=recent, beta=beta
+    )
 
 
 def replay_context(data: M5Series, config: PortfolioConfig, start: int, end: int,
@@ -234,5 +205,9 @@ def run_context_final(path: Path, output: Path, *, store_id: str = "TX_3",
         "caveat": "Observed sales are a censored demand proxy; economics and lead times are simulated.",
     }
     output.mkdir(parents=True, exist_ok=True)
+    save_context_model(selected["theta"], data, config, output, bool(eligible),
+                       baseline_cover=baseline["cover"],
+                       baseline_recent=baseline["recent_sales"],
+                       baseline_beta=baseline["beta"])
     (output / "report.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     return report

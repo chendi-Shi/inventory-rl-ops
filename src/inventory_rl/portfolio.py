@@ -46,6 +46,42 @@ def policy_search_scores(stock: np.ndarray, pipeline: np.ndarray,
     return -((ORDER_CHOICES[None, :] - desired[:, None]) ** 2) / (rate[:, None] + 1)
 
 
+def context_policy_scores(stock: np.ndarray, pipeline: np.ndarray,
+                          last_sales: np.ndarray, mean_train: np.ndarray,
+                          lead: np.ndarray, day: int, budget: float,
+                          unit_cost: float, theta: np.ndarray, *,
+                          cover: float, recent: bool, beta: float) -> np.ndarray:
+    """Portfolio-aware SKU priority atop a strong replenishment rule."""
+    if theta.shape != (9,) or not np.isfinite(theta).all():
+        raise ValueError("invalid context actor coefficients")
+    rule = base_stock_scores(stock, pipeline, last_sales, mean_train, lead,
+                             cover=cover, recent=recent, beta=beta)
+    if not theta.any():
+        return rule
+    sales = last_sales
+    mean = mean_train
+    rate = sales.mean(axis=1) if recent else mean
+    denom = mean + 1.0
+    trend = np.clip((sales.mean(axis=1) - mean) / denom, -2, 2)
+    momentum = np.clip((sales[:, -3:].mean(axis=1) -
+                        sales[:, :4].mean(axis=1)) / denom, -2, 2)
+    volatility = np.clip(sales.std(axis=1) / denom, 0, 3)
+    gap = np.clip((rate * (lead + cover) - stock - pipeline) /
+                  (rate + 1), -4, 4) / 4
+    pipeline_cover = np.clip(pipeline / (rate + 1), 0, 6) / 6
+    velocity = np.clip(np.log1p(mean) / np.log(41), 0, 2)
+    lead_feature = (lead - 2.0).astype(np.float64)
+    budget_units = budget / unit_cost
+    pressure = np.clip(rate.sum() / max(budget_units, 1) - 1, -2, 2)
+    global_pressure = np.full(len(stock), pressure)
+    phase = np.full(len(stock), np.sin(2 * np.pi * day / 7))
+    features = np.column_stack((trend, momentum, volatility, gap, pipeline_cover,
+                                velocity, lead_feature, global_pressure, phase))
+    priority = np.tanh(features @ theta)
+    scale = float(np.median(np.abs(np.diff(rule, axis=1))))
+    return rule + scale * priority[:, None] * (ORDER_CHOICES[None, :] / 4.0)
+
+
 def residual_scores(rule: np.ndarray, q_values: np.ndarray, alpha: float) -> np.ndarray:
     """Add a scaled Q-value residual without changing the exact alpha-zero rule."""
     if rule.shape != q_values.shape or rule.ndim != 2 or rule.shape[1] != len(ORDER_CHOICES):

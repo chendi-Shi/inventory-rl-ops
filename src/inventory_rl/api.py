@@ -9,6 +9,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
 from inventory_rl.artifact import load_model
+from inventory_rl.context_artifact import load_context_model, recommend_context
 from inventory_rl.env import InventoryEnv
 from inventory_rl.policy_search_artifact import load_actor_model, recommend_actor
 from inventory_rl.portfolio_artifact import load_portfolio_model, recommend_portfolio
@@ -128,6 +129,40 @@ def recommend_policy_search(request: PortfolioRequest) -> dict:
     try:
         theta, manifest = policy_search_bundle()
         return recommend_actor(
+            theta, manifest, day=request.day,
+            stock=np.asarray(request.stock, dtype=float),
+            pipeline=np.asarray(request.pipeline, dtype=float),
+            last_sales=np.asarray(request.last_sales, dtype=float),
+            force_actor=os.environ.get("ALLOW_UNPROMOTED") == "1",
+        )
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@lru_cache(maxsize=1)
+def context_model_bundle():
+    return load_context_model(Path(os.environ.get(
+        "CONTEXT_MODEL_DIR", "models/tx3-context"
+    )))
+
+
+@app.get("/v4/health")
+def context_health() -> dict:
+    try:
+        _, manifest = context_model_bundle()
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    return {"status": "ready", "model_sha256": manifest["model_sha256"],
+            "promotion_eligible": manifest["promotion_eligible"],
+            "active_policy": manifest["active_policy"],
+            "sku_count": len(manifest["item_ids"])}
+
+
+@app.post("/v4/portfolio/recommendations")
+def recommend_context_actor(request: PortfolioRequest) -> dict:
+    try:
+        theta, manifest = context_model_bundle()
+        return recommend_context(
             theta, manifest, day=request.day,
             stock=np.asarray(request.stock, dtype=float),
             pipeline=np.asarray(request.pipeline, dtype=float),
