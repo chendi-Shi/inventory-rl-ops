@@ -9,13 +9,16 @@ import numpy as np
 
 from inventory_rl.agent import DQNAgent
 from inventory_rl.m5 import M5Series
-from inventory_rl.portfolio import ORDER_CHOICES, PortfolioConfig, allocate
+from inventory_rl.portfolio import ORDER_CHOICES, PortfolioConfig, allocate, base_stock_scores
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 
 def save_portfolio_model(agent: DQNAgent, data: M5Series, config: PortfolioConfig,
-                         directory: Path, promotion_eligible: bool) -> None:
+                         directory: Path, promotion_eligible: bool, *,
+                         baseline_recent: bool, baseline_cover: float) -> None:
+    if not isinstance(baseline_recent, bool) or not np.isfinite(baseline_cover) or baseline_cover < 0:
+        raise ValueError("invalid baseline selection")
     directory.mkdir(parents=True, exist_ok=True)
     model = directory / "portfolio_model.npz"
     np.savez_compressed(model, **agent.online.params)
@@ -31,6 +34,8 @@ def save_portfolio_model(agent: DQNAgent, data: M5Series, config: PortfolioConfi
         "lead_time": (1 + np.arange(data.n_sku) % 3).tolist(),
         "economics": asdict(config),
         "promotion_eligible": promotion_eligible,
+        "active_policy": "rl" if promotion_eligible else "base_stock",
+        "baseline_selection": {"recent_sales": baseline_recent, "cover": baseline_cover},
     }
     (directory / "portfolio_manifest.json").write_text(
         json.dumps(manifest, indent=2) + "\n", encoding="utf-8"
@@ -49,6 +54,13 @@ def load_portfolio_model(directory: Path) -> tuple[DQNAgent, dict]:
         raise ValueError("invalid item IDs")
     if len(manifest["mean_train"]) != count or len(manifest["lead_time"]) != count:
         raise ValueError("invalid portfolio metadata dimensions")
+    baseline = manifest["baseline_selection"]
+    if not isinstance(baseline["recent_sales"], bool) or not isinstance(baseline["cover"], (int, float)):
+        raise TypeError("invalid baseline metadata")
+    if not np.isfinite(baseline["cover"]) or baseline["cover"] < 0:
+        raise ValueError("invalid baseline coverage")
+    if manifest["active_policy"] != ("rl" if manifest["promotion_eligible"] else "base_stock"):
+        raise ValueError("active policy conflicts with promotion decision")
     PortfolioConfig(**manifest["economics"])
     agent = DQNAgent(8, len(ORDER_CHOICES))
     with np.load(model, allow_pickle=False) as weights:
@@ -64,7 +76,7 @@ def load_portfolio_model(directory: Path) -> tuple[DQNAgent, dict]:
 
 def recommend_portfolio(agent: DQNAgent, manifest: dict, *, day: int,
                         stock: np.ndarray, pipeline: np.ndarray,
-                        last_sales: np.ndarray) -> dict:
+                        last_sales: np.ndarray, force_rl: bool = False) -> dict:
     n_sku = len(manifest["item_ids"])
     if day < 0 or stock.shape != (n_sku,) or pipeline.shape != (3, n_sku) or (
         last_sales.shape != (n_sku, 7)
@@ -79,19 +91,29 @@ def recommend_portfolio(agent: DQNAgent, manifest: dict, *, day: int,
     capacity = config.capacity_per_sku * n_sku
     lead = np.asarray(manifest["lead_time"])
     mean_train = np.asarray(manifest["mean_train"])
-    state = np.column_stack((
-        np.minimum(stock / 40.0, 5),
-        np.minimum(pipeline.sum(axis=0) / 40.0, 5),
-        np.minimum(last_sales[:, -1] / 40.0, 5),
-        np.minimum(last_sales.mean(axis=1) / 40.0, 5),
-        np.minimum(mean_train / 40.0, 5),
-        lead / 3.0,
-        np.full(n_sku, np.sin(2 * np.pi * day / 7)),
-        np.full(n_sku, np.cos(2 * np.pi * day / 7)),
-    ))
-    orders = allocate(agent.online.predict(state), stock=stock, pipeline=pipeline.sum(axis=0),
+    policy_type = "rl_unpromoted" if force_rl and not manifest["promotion_eligible"] else (
+        "rl" if force_rl else manifest["active_policy"]
+    )
+    if policy_type == "base_stock":
+        baseline = manifest["baseline_selection"]
+        scores = base_stock_scores(stock, pipeline.sum(axis=0), last_sales, mean_train,
+                                   lead, cover=baseline["cover"], recent=baseline["recent_sales"])
+    else:
+        state = np.column_stack((
+            np.minimum(stock / 40.0, 5),
+            np.minimum(pipeline.sum(axis=0) / 40.0, 5),
+            np.minimum(last_sales[:, -1] / 40.0, 5),
+            np.minimum(last_sales.mean(axis=1) / 40.0, 5),
+            np.minimum(mean_train / 40.0, 5),
+            lead / 3.0,
+            np.full(n_sku, np.sin(2 * np.pi * day / 7)),
+            np.full(n_sku, np.cos(2 * np.pi * day / 7)),
+        ))
+        scores = agent.online.predict(state)
+    orders = allocate(scores, stock=stock, pipeline=pipeline.sum(axis=0),
                       budget=budget, capacity=capacity, unit_cost=config.unit_cost)
     return {"store_id": manifest["store_id"],
+            "policy_type": policy_type,
             "orders": {item: int(qty) for item, qty in zip(manifest["item_ids"], orders)},
             "spend": float(orders.sum() * config.unit_cost),
             "model_sha256": manifest["model_sha256"]}

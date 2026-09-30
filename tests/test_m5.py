@@ -71,3 +71,14 @@ def test_end_to_end_m5_pipeline_and_block_ci():
                                  last_sales=np.ones((8, 7)))
     assert len(result["orders"]) == 8
     assert result["spend"] <= 8 * 32
+    assert result["policy_type"] == manifest["active_policy"]
+    fallback_manifest = {**manifest, "promotion_eligible": False, "active_policy": "base_stock"}
+    fallback = recommend_portfolio(agent, fallback_manifest, day=551,
+                                   stock=np.full(8, 10), pipeline=np.zeros((3, 8)),
+                                   last_sales=np.ones((8, 7)))
+    assert fallback["policy_type"] == "base_stock"
+    assert fallback["spend"] <= 8 * 32
+    demo = recommend_portfolio(agent, fallback_manifest, day=551,
+                               stock=np.full(8, 10), pipeline=np.zeros((3, 8)),
+                               last_sales=np.ones((8, 7)), force_rl=True)
+    assert demo["policy_type"] == "rl_unpromoted"

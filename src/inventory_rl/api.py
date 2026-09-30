@@ -39,7 +39,7 @@ def model_bundle():
 def health() -> dict:
     try:
         _, _, manifest = model_bundle()
-    except (OSError, ValueError, KeyError) as exc:
+    except (OSError, ValueError, KeyError, TypeError) as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     return {"status": "ready", "model_sha256": manifest["model_sha256"]}
 
@@ -68,7 +68,7 @@ def recommend(request: DecisionRequest) -> dict:
         return {"action_id": action_id, "order": order.tolist(),
                 "spend": float(order @ np.asarray(config.unit_cost)),
                 "model_sha256": manifest["model_sha256"]}
-    except (OSError, ValueError, KeyError) as exc:
+    except (OSError, ValueError, KeyError, TypeError) as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
@@ -81,10 +81,11 @@ def portfolio_model_bundle():
 def portfolio_health() -> dict:
     try:
         _, manifest = portfolio_model_bundle()
-    except (OSError, ValueError, KeyError) as exc:
+    except (OSError, ValueError, KeyError, TypeError) as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     return {"status": "ready", "model_sha256": manifest["model_sha256"],
             "promotion_eligible": manifest["promotion_eligible"],
+            "active_policy": manifest["active_policy"],
             "sku_count": len(manifest["item_ids"])}
 
 
@@ -92,12 +93,11 @@ def portfolio_health() -> dict:
 def recommend_many(request: PortfolioRequest) -> dict:
     try:
         agent, manifest = portfolio_model_bundle()
-        if not manifest["promotion_eligible"] and os.environ.get("ALLOW_UNPROMOTED") != "1":
-            raise HTTPException(status_code=409, detail="model failed offline promotion gate")
         return recommend_portfolio(
             agent, manifest, day=request.day, stock=np.asarray(request.stock, dtype=float),
             pipeline=np.asarray(request.pipeline, dtype=float),
             last_sales=np.asarray(request.last_sales, dtype=float),
+            force_rl=os.environ.get("ALLOW_UNPROMOTED") == "1",
         )
-    except (OSError, ValueError, KeyError) as exc:
+    except (OSError, ValueError, KeyError, TypeError) as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc

@@ -9,6 +9,15 @@ from inventory_rl.m5 import M5Series
 ORDER_CHOICES = np.array([0, 4, 8, 16], dtype=np.int32)
 
 
+def base_stock_scores(stock: np.ndarray, pipeline: np.ndarray, last_sales: np.ndarray,
+                      mean_train: np.ndarray, lead: np.ndarray, *, cover: float,
+                      recent: bool) -> np.ndarray:
+    """Score feasible packs for the validation-tuned replenishment rule."""
+    rate = last_sales.mean(axis=1) if recent else mean_train
+    desired = np.maximum(rate * (lead + cover) - stock - pipeline, 0)
+    return -((ORDER_CHOICES[None, :] - desired[:, None]) ** 2) / (rate[:, None] + 1)
+
+
 @dataclass(frozen=True)
 class PortfolioConfig:
     budget_per_sku: float = 32.0

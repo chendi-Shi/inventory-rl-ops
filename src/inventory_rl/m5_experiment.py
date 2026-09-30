@@ -8,15 +8,19 @@ import numpy as np
 
 from inventory_rl.agent import DQNAgent, Transition
 from inventory_rl.m5 import M5Series, load_m5
-from inventory_rl.portfolio import ORDER_CHOICES, PortfolioConfig, PortfolioEnv, allocate
+from inventory_rl.portfolio import (
+    ORDER_CHOICES,
+    PortfolioConfig,
+    PortfolioEnv,
+    allocate,
+    base_stock_scores,
+)
 from inventory_rl.portfolio_artifact import save_portfolio_model
 
 
 def rule_scores(env: PortfolioEnv, cover: float, recent: bool) -> np.ndarray:
-    rate = env.last_sales.mean(axis=1) if recent else env.mean_train
-    desired = np.maximum(rate * (env.lead + cover)
-                         - env.stock - env.pipeline.sum(axis=0), 0)
-    return -((ORDER_CHOICES[None, :] - desired[:, None]) ** 2) / (rate[:, None] + 1)
+    return base_stock_scores(env.stock, env.pipeline.sum(axis=0), env.last_sales,
+                             env.mean_train, env.lead, cover=cover, recent=recent)
 
 
 def replay(data: M5Series, config: PortfolioConfig, start: int, end: int,
@@ -156,10 +160,12 @@ def run(path: Path, output: Path, *, store_id: str = "CA_1", sku_count: int = 64
                  "paired_profit_uplift": test_rl["profit"] - test_baseline["profit"],
                  "paired_uplift_block_bootstrap_ci95": ci,
                  "p10_daily_profit_rl": p10_rl, "p10_daily_profit_base_stock": p10_base,
-                 "promotion_eligible": bool(eligible)},
+                 "promotion_eligible": bool(eligible),
+                 "active_policy": "rl" if eligible else "base_stock"},
         "caveat": "Observed sales are a censored demand proxy; procurement economics and lead times are simulated.",
     }
     output.mkdir(parents=True, exist_ok=True)
-    save_portfolio_model(selected_agent, data, config, output, bool(eligible))
+    save_portfolio_model(selected_agent, data, config, output, bool(eligible),
+                         baseline_recent=baseline_recent, baseline_cover=baseline_cover)
     (output / "report.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     return report
