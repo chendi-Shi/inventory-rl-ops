@@ -8,6 +8,8 @@ The separately predeclared [CA_4 residual-RL study](docs/HYBRID_RESULTS.md) sele
 
 After reviewing [heuristic-guided inventory RL](https://github.com/qihuazhong/multi-echelon-drl) and the [OR-Gym inventory benchmark](https://github.com/r2barati/or-gym-inventory), we added a guided-exploration ablation on the previously unused TX_1 store. The guided model won on validation but was **0.14% below** the tuned rule on test; the unguided model was **0.06% above**, with a confidence interval crossing zero. Neither qualified for deployment. [Plan](docs/GUIDED_EXPLORATION_PLAN.md) · [Results](docs/GUIDED_EXPLORATION_RESULTS.md).
 
+A second [TX_2 budget-allocation study](docs/ALLOCATION_RESULTS.md) tested three ways to normalize the rule's SKU scores while preserving the existing rule as an exact candidate. Validation selected the original normalization, so the deployed fallback was unchanged. This result is published with its [predeclared plan](docs/ALLOCATION_PLAN.md).
+
 ## Why this is an RL problem
 
 Each daily order affects future inventory because item lead times span one to three days. The agent trades service level, holding cost, purchasing cost and lost sales while it competes for a **shared** budget and storage space. It receives each SKU's stock, outstanding orders, recent sales, historical sales level, lead time, and weekly phase. The network scores four pack choices per item (0, 4, 8, 16 units). A deterministic marginal-value allocator coordinates all 64 scores into one feasible portfolio order. The simulator checks both hard constraints before every transition.
@@ -58,6 +60,17 @@ inventory-rl m5-guided-run --data data/m5/sales_train_validation.csv \
 
 The [TX_1 result](docs/GUIDED_EXPLORATION_RESULTS.md) is a negative ablation result: rule guidance did not improve out-of-sample profit. The report preserves both training families and all validation candidates. The active API policy remains the validation-tuned rule.
 
+## Budget-allocation score study on TX_2
+
+The [TX_2 plan](docs/ALLOCATION_PLAN.md) tests whether changing how the rule scales marginal scores across SKUs improves allocation when the shared purchasing budget is full. It includes the original rule exactly in the candidate grid. Reproduce it with:
+
+```bash
+inventory-rl m5-allocation-run --data data/m5/sales_train_validation.csv \
+  --store TX_2 --skus 64 --output artifacts/m5-tx2-allocation
+```
+
+Validation chose the original scoring on TX_2. The [complete result](docs/ALLOCATION_RESULTS.md) records zero difference on its untouched test period, so the service's rule was not changed.
+
 ## Deployment boundary
 
 The optional FastAPI service has `/v2/health` and `/v2/portfolio/recommendations`. It checks bundle integrity and portfolio dimensions, enforces budget and capacity, and **falls back to the validation-tuned base-stock rule when RL fails the offline promotion gate**. Responses name the active policy. Set `PORTFOLIO_MODEL_DIR` to the M5 artifact directory and run `uvicorn inventory_rl.api:app --host 127.0.0.1 --port 8000`. `ALLOW_UNPROMOTED=1` explicitly labels and enables the unpromoted RL policy for local demonstrations only. The repository also contains a Dockerfile; mount the reviewed artifact at `/models`.
@@ -81,6 +94,7 @@ Do not describe any of these simulated differences as real retail profit changes
 | Training, baseline tuning, test and bootstrap | `src/inventory_rl/m5_experiment.py` |
 | Residual RL experiment | `src/inventory_rl/m5_hybrid.py`, `docs/HYBRID_PLAN.md`, `docs/HYBRID_RESULTS.md` |
 | Guided exploration ablation | `src/inventory_rl/m5_guided.py`, `docs/GUIDED_EXPLORATION_PLAN.md`, `docs/GUIDED_EXPLORATION_RESULTS.md` |
+| Allocation score study | `src/inventory_rl/m5_allocation.py`, `docs/ALLOCATION_PLAN.md`, `docs/ALLOCATION_RESULTS.md` |
 | Portable policy bundle and inference | `src/inventory_rl/portfolio_artifact.py`, `src/inventory_rl/api.py` |
 | Automated checks | `tests/`, `.github/workflows/ci.yml` |
 | Official-data evaluation and limitations | `docs/CROSS_STORE_RESULTS.md`, `docs/M5_RESULTS.md`, `docs/M5_PROTOCOL.md` |
