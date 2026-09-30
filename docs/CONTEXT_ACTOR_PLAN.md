@@ -1,0 +1,13 @@
+# Predeclared context-aware portfolio actor test: TX_3
+
+Earlier CA_1–CA_4, TX_1–TX_2 and WI_1–WI_3 test outcomes have been inspected. TX_3 is the remaining M5 store not evaluated in this project. The new actor was developed using **training and validation periods only** on WI_2 and WI_3; its validation advantage over the expanded rule was +945.80 and +1,584.20 simulated units, respectively. This plan freezes the TX_3 procedure before its test period is evaluated.
+
+## Fixed method
+
+- Keep the official M5 CSV, 64 active TX_3 SKUs chosen from days 1–1700, existing economics, lead times, pack sizes, shared purchasing budget and storage capacity. Days 1–1700 train; days 1701–1800 select rule and actor; days 1801–1913 are the independent final test.
+- Select the strongest rule from the **48-candidate** validation grid: long-run or last-seven-day forecast, cover `{0.5, 1, 1.5, 2, 3, 4, 5, 6}`, score-normalization exponent `{0, 0.5, 1}`. Ties favor higher exponent, lower cover, then long-run forecast.
+- The actor adds `median(abs(rule marginal score)) × tanh(theta · features) × pack/4` to each rule score. Nine observable features encode sales trend, momentum, volatility, current inventory gap, pipeline coverage, sales velocity, lead time, global budget pressure and weekly phase. The zero vector reproduces the strong rule exactly. The original deterministic allocator enforces budget and capacity.
+- Train coefficients by whole-portfolio episodic cross-entropy policy search, seeds 11 and 22. For each seed draw two fixed 84-day windows from days 366–1700. Run 10 iterations of 8 Gaussian candidates, take the best two training-return candidates as elites, update the mean, and decay standard deviation from 0.5 by 0.85 per iteration with a 0.05 floor. Evaluate zero and each iteration mean on validation; choose the highest validation-profit checkpoint, breaking ties by smaller coefficient norm then lower seed.
+- Test the locked actor against the locked strong rule once on days 1801–1913. Report simulated profit difference and percentage, paired seven-day-block bootstrap 95% interval, fill rate, 10th-percentile daily profit and mean spend. Promote only when coefficients are nonzero, the lower profit interval bound is positive, fill rate is no more than two percentage points lower and the 10th-percentile daily profit is no lower.
+
+No method, feature, seed, grid, store, economics or gate will change after inspecting the TX_3 test. A positive result supports a TX_3 **offline simulated-profit** claim only. It cannot be described as actual business profit because M5 sales may be censored and the economics are simulated. All outcomes will be reported, including a failure.

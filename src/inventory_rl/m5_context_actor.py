@@ -1,0 +1,174 @@
+"""Context-aware marginal-score actor for binding shared purchasing budgets."""
+
+import json
+from pathlib import Path
+
+import numpy as np
+
+from inventory_rl.m5 import M5Series, load_m5
+from inventory_rl.m5_experiment import replay
+from inventory_rl.portfolio import (
+    ORDER_CHOICES,
+    PortfolioConfig,
+    PortfolioEnv,
+    allocate,
+    base_stock_scores,
+)
+
+N_CONTEXT_FEATURES = 9
+COVER_GRID = (0.5, 1.0, 1.5, 2.0, 3.0, 4.0, 5.0, 6.0)
+BETA_GRID = (0.0, 0.5, 1.0)
+
+
+def context_scores(env: PortfolioEnv, theta: np.ndarray, *, cover: float,
+                   recent: bool, beta: float) -> np.ndarray:
+    """Add a bounded SKU priority to the validation-selected rule scores."""
+    if theta.shape != (N_CONTEXT_FEATURES,) or not np.isfinite(theta).all():
+        raise ValueError("invalid context actor coefficients")
+    pipeline = env.pipeline.sum(axis=0)
+    rule = base_stock_scores(env.stock, pipeline, env.last_sales, env.mean_train,
+                             env.lead, cover=cover, recent=recent, beta=beta)
+    if not theta.any():
+        return rule
+    sales = env.last_sales
+    mean = env.mean_train
+    rate = sales.mean(axis=1) if recent else mean
+    denom = mean + 1.0
+    trend = np.clip((sales.mean(axis=1) - mean) / denom, -2, 2)
+    momentum = np.clip((sales[:, -3:].mean(axis=1) -
+                        sales[:, :4].mean(axis=1)) / denom, -2, 2)
+    volatility = np.clip(sales.std(axis=1) / denom, 0, 3)
+    gap = np.clip((rate * (env.lead + cover) - env.stock - pipeline) /
+                  (rate + 1), -4, 4) / 4
+    pipeline_cover = np.clip(pipeline / (rate + 1), 0, 6) / 6
+    velocity = np.clip(np.log1p(mean) / np.log(41), 0, 2)
+    lead = (env.lead - 2.0).astype(np.float64)
+    budget_units = env.budget / env.config.unit_cost
+    pressure = np.clip(rate.sum() / max(budget_units, 1) - 1, -2, 2)
+    global_pressure = np.full(env.data.n_sku, pressure)
+    phase = np.full(env.data.n_sku, np.sin(2 * np.pi * env.day / 7))
+    features = np.column_stack((trend, momentum, volatility, gap, pipeline_cover,
+                                velocity, lead, global_pressure, phase))
+    priority = np.tanh(features @ theta)
+    scale = float(np.median(np.abs(np.diff(rule, axis=1))))
+    return rule + scale * priority[:, None] * (ORDER_CHOICES[None, :] / 4.0)
+
+
+def replay_context(data: M5Series, config: PortfolioConfig, start: int, end: int,
+                   theta: np.ndarray, *, cover: float, recent: bool,
+                   beta: float) -> dict:
+    env = PortfolioEnv(data, config)
+    env.reset(start, end)
+    daily = []
+    demand = sold = spend = 0.0
+    while env.day < end:
+        scores = context_scores(env, theta, cover=cover, recent=recent, beta=beta)
+        orders = allocate(scores, stock=env.stock, pipeline=env.pipeline.sum(axis=0),
+                          budget=env.budget, capacity=env.capacity,
+                          unit_cost=config.unit_cost)
+        _, reward, _, info = env.step(orders)
+        daily.append(float(reward.sum()))
+        demand += info["demand"]
+        sold += info["sold"]
+        spend += info["spend"]
+    return {"profit": float(sum(daily)), "daily_profit": daily,
+            "fill_rate": float(sold / max(demand, 1)),
+            "mean_daily_spend": float(spend / (end - start)),
+            "days": end - start, "sku_count": data.n_sku}
+
+
+def select_strong_rule(data: M5Series, config: PortfolioConfig) -> tuple[dict, list[dict]]:
+    candidates = []
+    for beta in BETA_GRID:
+        for recent in (False, True):
+            for cover in COVER_GRID:
+                validation = replay(data, config, data.train_end, data.validation_end,
+                                    cover=cover, recent=recent, baseline_beta=beta)
+                candidates.append({"beta": beta, "recent_sales": recent,
+                                   "cover": cover, "validation_profit": validation["profit"]})
+    selected = max(candidates, key=lambda c: (c["validation_profit"], c["beta"],
+                                              -c["cover"], -int(c["recent_sales"])))
+    return selected, candidates
+
+
+def fit_context(data: M5Series, config: PortfolioConfig, baseline: dict, *,
+                seeds: tuple[int, ...] = (11, 22), iterations: int = 10,
+                population: int = 8, window: int = 84) -> dict:
+    if not seeds or iterations < 1 or population < 2 or window < 7:
+        raise ValueError("invalid context search settings")
+    if data.train_end - window < 365:
+        raise ValueError("insufficient training history")
+    cover = baseline["cover"]
+    recent = baseline["recent_sales"]
+    beta = baseline["beta"]
+    checkpoints = []
+    histories = []
+    for seed in seeds:
+        rng = np.random.default_rng(seed)
+        windows = rng.choice(np.arange(365, data.train_end - window + 1),
+                             size=2, replace=False)
+        mean = np.zeros(N_CONTEXT_FEATURES)
+        sigma = 0.5
+        history = {"seed": seed, "train_windows_zero_based": windows.tolist(),
+                   "iterations": []}
+        for iteration in range(iterations + 1):
+            validation = replay_context(data, config, data.train_end, data.validation_end,
+                                        mean, cover=cover, recent=recent, beta=beta)
+            checkpoints.append({"seed": seed, "iteration": iteration,
+                                "theta": mean.copy(),
+                                "validation_profit": validation["profit"]})
+            if iteration == iterations:
+                break
+            population_theta = mean + rng.normal(0, sigma,
+                                                 size=(population, N_CONTEXT_FEATURES))
+            train_returns = []
+            for theta in population_theta:
+                train_returns.append(sum(replay_context(data, config, int(start),
+                                                        int(start) + window, theta,
+                                                        cover=cover, recent=recent,
+                                                        beta=beta)["profit"]
+                                         for start in windows))
+            elite_indices = np.argsort(train_returns)[-2:]
+            mean = population_theta[elite_indices].mean(axis=0)
+            history["iterations"].append({
+                "iteration": iteration + 1, "sigma": sigma,
+                "train_returns": [float(x) for x in train_returns],
+                "elite_indices": elite_indices.tolist(), "mean_theta": mean.tolist(),
+            })
+            sigma = max(0.05, sigma * 0.85)
+        histories.append(history)
+    selected = max(checkpoints, key=lambda c: (c["validation_profit"],
+                                                -np.linalg.norm(c["theta"]), -c["seed"]))
+    return {"selected": selected, "checkpoints": checkpoints,
+            "training_histories": histories}
+
+
+def run_context_development(path: Path, output: Path, *, store_id: str = "WI_2",
+                            sku_count: int = 64, train_end: int = 1700,
+                            validation_end: int = 1800, **fit_kwargs) -> dict:
+    """Train and report validation only; this function never evaluates test days."""
+    data = load_m5(path, store_id=store_id, sku_count=sku_count,
+                   train_end=train_end, validation_end=validation_end)
+    config = PortfolioConfig()
+    baseline, baseline_candidates = select_strong_rule(data, config)
+    fitted = fit_context(data, config, baseline, **fit_kwargs)
+    selected = fitted["selected"]
+    report = {
+        "analysis_status": "development train and validation only",
+        "store_id": store_id, "source_sha256": data.source_sha256,
+        "selected_item_ids": list(data.item_ids),
+        "baseline": baseline, "baseline_candidate_count": len(baseline_candidates),
+        "selected_actor": {"seed": selected["seed"],
+                           "iteration": selected["iteration"],
+                           "theta": selected["theta"].tolist(),
+                           "validation_profit": selected["validation_profit"]},
+        "validation_checkpoints": [
+            {"seed": c["seed"], "iteration": c["iteration"],
+             "theta": c["theta"].tolist(), "profit": c["validation_profit"]}
+            for c in fitted["checkpoints"]
+        ],
+        "training_histories": fitted["training_histories"],
+    }
+    output.mkdir(parents=True, exist_ok=True)
+    (output / "report.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+    return report

@@ -7,6 +7,7 @@ import pytest
 from inventory_rl.agent import DQNAgent
 from inventory_rl.m5 import load_m5
 from inventory_rl.m5_allocation import run_allocation
+from inventory_rl.m5_context_actor import context_scores, replay_context, run_context_development
 from inventory_rl.m5_experiment import block_bootstrap_ci, replay, run
 from inventory_rl.m5_guided import run_guided
 from inventory_rl.m5_hybrid import run_hybrid
@@ -235,3 +236,29 @@ def test_portfolio_policy_search_anchors_exact_rule_and_records_selection():
                                   sku_count=8, train_end=500, validation_end=550)
     assert sensitivity["candidate_count"] == 48
     assert sensitivity["test"]["actor"]["daily_profit"] == report["test"]["actor"]["daily_profit"]
+
+
+def test_context_actor_anchors_strong_rule_and_excludes_test_in_development():
+    path = Path("artifacts/_test_m5.csv")
+    write_m5_fixture(path)
+    data = load_m5(path, sku_count=8, train_end=500, validation_end=550)
+    env = PortfolioEnv(data)
+    env.reset(500, 520)
+    np.testing.assert_array_equal(
+        context_scores(env, np.zeros(9), cover=2.0, recent=False, beta=0.5),
+        base_stock_scores(env.stock, env.pipeline.sum(axis=0), env.last_sales,
+                          env.mean_train, env.lead, cover=2.0, recent=False, beta=0.5),
+    )
+    anchored = replay_context(data, env.config, 550, 600, np.zeros(9),
+                              cover=2.0, recent=False, beta=0.5)
+    rule = replay(data, env.config, 550, 600, cover=2.0, recent=False, baseline_beta=0.5)
+    assert anchored["daily_profit"] == rule["daily_profit"]
+    report = run_context_development(path, Path("artifacts/_test_context_dev"),
+                                     store_id="CA_1", sku_count=8, train_end=500,
+                                     validation_end=550, seeds=(1,), iterations=1,
+                                     population=2)
+    assert report["analysis_status"] == "development train and validation only"
+    assert report["baseline_candidate_count"] == 48
+    assert report["selected_actor"]["validation_profit"] >= report["baseline"][
+        "validation_profit"
+    ]
