@@ -4,6 +4,8 @@ A portfolio-scale reinforcement learning system for **64 SKUs sharing one wareho
 
 **Verification status:** the complete M5 pipeline passes automated end-to-end tests and has been run on the official 120 MB M5 CSV. Across three CA stores, the pure Double DQN candidate underperformed a validation-tuned replenishment rule by **1.45%, 5.31% and 1.63%** in simulated profit on separate 113-day test windows. The RL policy failed the offline promotion gate; the decision service serves the validated base-stock rule by default. [Cross-store results](docs/CROSS_STORE_RESULTS.md) · [CA_1 report](docs/m5-ca1-report.json). These are simulated economics, not observed business profit.
 
+The separately predeclared [CA_4 residual-RL study](docs/HYBRID_RESULTS.md) selected a nonzero RL adjustment on validation but finished **0.16% below** the tuned rule on its untouched test period. Its release gate also chose the baseline. All outcomes, including unfavorable ones, are published.
+
 ## Why this is an RL problem
 
 Each daily order affects future inventory because item lead times span one to three days. The agent trades service level, holding cost, purchasing cost and lost sales while it competes for a **shared** budget and storage space. It receives each SKU's stock, outstanding orders, recent sales, historical sales level, lead time, and weekly phase. The network scores four pack choices per item (0, 4, 8, 16 units). A deterministic marginal-value allocator coordinates all 64 scores into one feasible portfolio order. The simulator checks both hard constraints before every transition.
@@ -40,7 +42,7 @@ inventory-rl m5-hybrid-run --data data/m5/sales_train_validation.csv \
   --output artifacts/m5-ca4-hybrid
 ```
 
-The CA_4 test period is reserved for one final comparison. An unpromoted residual policy falls back to the tuned rule in the API.
+The CA_4 test period was used once for the [published comparison](docs/HYBRID_RESULTS.md). An unpromoted residual policy falls back to the tuned rule in the API.
 
 ## Deployment boundary
 
@@ -50,9 +52,11 @@ The gate requires the lower 95% bound of paired profit uplift to be positive, a 
 
 ## What can go on a resume
 
-> Built a 64-SKU, shared-budget inventory RL platform on M5 item-level sales with a factored Double DQN, action feasibility checks, chronological model selection, tuned operations baseline, block-bootstrap evaluation, model manifest and guarded FastAPI serving. The first real-data backtest found a −1.45% simulated profit gap to the tuned rule; the release gate selected the rule for serving.
+> Built a 64-SKU, shared-budget inventory RL platform on M5 item-level sales with a factored Double DQN and a baseline-plus-RL residual candidate, action feasibility checks, chronological model selection, block-bootstrap evaluation, model manifest and guarded FastAPI serving. Across four store-level tests, no RL candidate passed the release gate; the service selected the tuned replenishment rule rather than claiming an unsupported uplift.
 
-Do not describe the −1.45% as a real retail profit change. M5 provides observed sales, which may be censored by historical stockouts; procurement costs, lead times and capacity in this project are simulated. The project demonstrates rigorous decision-system engineering and a release decision, not a proven business uplift.
+Do not describe any of these simulated differences as real retail profit changes. M5 provides observed sales, which may be censored by historical stockouts; procurement costs, lead times and capacity in this project are simulated. The project demonstrates rigorous decision-system engineering and a release decision, not a proven business uplift.
+
+[中文简历与面试表述](docs/RESUME_CN.md).
 
 ## Repository map
 
@@ -61,7 +65,7 @@ Do not describe the −1.45% as a real retail profit change. M5 provides observe
 | M5 data ingestion and time split | `src/inventory_rl/m5.py` |
 | Multi-SKU simulator and constrained allocator | `src/inventory_rl/portfolio.py` |
 | Training, baseline tuning, test and bootstrap | `src/inventory_rl/m5_experiment.py` |
-| Residual RL experiment | `src/inventory_rl/m5_hybrid.py`, `docs/HYBRID_PLAN.md` |
+| Residual RL experiment | `src/inventory_rl/m5_hybrid.py`, `docs/HYBRID_PLAN.md`, `docs/HYBRID_RESULTS.md` |
 | Portable policy bundle and inference | `src/inventory_rl/portfolio_artifact.py`, `src/inventory_rl/api.py` |
 | Automated checks | `tests/`, `.github/workflows/ci.yml` |
 | Official-data evaluation and limitations | `docs/CROSS_STORE_RESULTS.md`, `docs/M5_RESULTS.md`, `docs/M5_PROTOCOL.md` |
