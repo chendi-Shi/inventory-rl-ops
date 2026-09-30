@@ -15,6 +15,7 @@ from inventory_rl.m5_experiment import run as run_m5
 from inventory_rl.m5_guided import run_guided
 from inventory_rl.m5_hybrid import run_hybrid
 from inventory_rl.m5_policy_search import run_policy_search
+from inventory_rl.m5_sensitivity import run_sensitivity
 from inventory_rl.m5_transfer import run_transfer
 
 
@@ -103,6 +104,13 @@ def main() -> None:
     transfer_cmd.add_argument("--output", type=Path, default=Path("artifacts/m5-wi-transfer"))
     transfer_cmd.add_argument("--stores", nargs="+", default=["WI_2", "WI_3"])
     transfer_cmd.add_argument("--skus", type=int, default=64)
+    sensitivity_cmd = commands.add_parser("m5-sensitivity-run",
+                                          help="post-hoc stronger-rule sensitivity")
+    sensitivity_cmd.add_argument("--data", type=Path, required=True)
+    sensitivity_cmd.add_argument("--actor", type=Path, default=Path("models/wi1-policy-search"))
+    sensitivity_cmd.add_argument("--output", type=Path,
+                                 default=Path("artifacts/m5-wi1-sensitivity"))
+    sensitivity_cmd.add_argument("--skus", type=int, default=64)
     args = parser.parse_args()
     if args.command == "train":
         report = train(args.episodes, args.seed, args.output)
@@ -123,9 +131,12 @@ def main() -> None:
     elif args.command == "m5-policy-search-run":
         report = run_policy_search(args.data, args.output, store_id=args.store,
                                    sku_count=args.skus)
-    else:
+    elif args.command == "m5-transfer-run":
         report = run_transfer(args.data, args.actor, args.output,
                               stores=tuple(args.stores), sku_count=args.skus)
+    else:
+        report = run_sensitivity(args.data, args.actor, args.output,
+                                 sku_count=args.skus)
     print(json.dumps(report, indent=2))
 
 

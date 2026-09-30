@@ -11,6 +11,7 @@ from inventory_rl.m5_experiment import block_bootstrap_ci, replay, run
 from inventory_rl.m5_guided import run_guided
 from inventory_rl.m5_hybrid import run_hybrid
 from inventory_rl.m5_policy_search import actor_scores, replay_actor, run_policy_search
+from inventory_rl.m5_sensitivity import run_sensitivity
 from inventory_rl.m5_transfer import run_transfer
 from inventory_rl.portfolio import PortfolioEnv, allocate, base_stock_scores, residual_scores
 from inventory_rl.portfolio_artifact import load_portfolio_model, recommend_portfolio
@@ -184,3 +185,8 @@ def test_portfolio_policy_search_anchors_exact_rule_and_records_selection():
                             Path("artifacts/_test_transfer"), stores=("CA_1",),
                             sku_count=8, train_end=500, validation_end=550)
     assert transfer["stores"]["CA_1"]["test"]["actor"]["days"] == 50
+    sensitivity = run_sensitivity(path, Path("artifacts/_test_policy_search"),
+                                  Path("artifacts/_test_sensitivity"),
+                                  sku_count=8, train_end=500, validation_end=550)
+    assert sensitivity["candidate_count"] == 48
+    assert sensitivity["test"]["actor"]["daily_profit"] == report["test"]["actor"]["daily_profit"]

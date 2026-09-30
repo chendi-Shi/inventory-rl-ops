@@ -1,0 +1,7 @@
+# WI_1 stronger-rule sensitivity (post-hoc)
+
+After inspecting the positive WI_1 test result, we noticed that the predeclared baseline chose the upper edge of its coverage grid (`cover=3`). We therefore ran a **post-hoc diagnostic**, not a new confirmatory test: expand coverage to 4, 5 and 6 and include score-normalization exponents `beta ∈ {0, 0.5, 1}`. The resulting 48 candidates were selected by validation profit. The [complete report](m5-wi1-sensitivity-report.json) records each candidate and daily test outcome.
+
+The stronger validation-selected rule used long-run sales, `cover=5`, `beta=1`. Its test simulated profit was **303,941.75**, compared with **308,509.95** for the already locked RL actor: **+4,568.20 (+1.50%)** for RL. The paired seven-day-block bootstrap interval was **[+1,161.82, +7,995.80]**. Fill rate was 88.24% for this rule versus 88.47% for RL; 10th-percentile daily profit was 1,611.71 versus 1,652.12. The stronger rule spent the full 2,048 daily budget, while RL averaged 2,047.01.
+
+This check addresses the obvious concern that the original rule's coverage grid ended too early. Because it was designed **after the WI_1 test was seen**, its interval is descriptive and should not be presented as a fresh independent confirmation. The predeclared WI_1 comparison remains the primary result. Neither comparison demonstrates actual retailer profit or cross-store generalization.

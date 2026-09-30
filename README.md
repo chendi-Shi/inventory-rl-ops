@@ -1,8 +1,12 @@
 # Inventory RL Ops
 
-A portfolio-scale reinforcement learning system for **64 SKUs sharing one warehouse budget and storage capacity**. Its main experiment replays item-level sales from the [M5 Walmart retail dataset](https://doi.org/10.5281/zenodo.10203108), trains a shared-network factored Double DQN, tunes a credible replenishment baseline on a separate validation period, and evaluates once on a future test period. It includes a versioned decision bundle, a constrained batch recommendation API, CI, and conservative promotion rules.
+A portfolio-scale reinforcement learning system for **64 SKUs sharing one warehouse budget and storage capacity**. It replays item-level sales from the [M5 Walmart retail dataset](https://doi.org/10.5281/zenodo.10203108), compares multiple RL methods with validation-tuned replenishment rules, and evaluates on future test periods. It includes versioned decision bundles, a constrained batch recommendation API, CI, and conservative promotion rules.
 
-**Verification status:** the complete M5 pipeline passes automated end-to-end tests and has been run on the official 120 MB M5 CSV. Across three CA stores, the pure Double DQN candidate underperformed a validation-tuned replenishment rule by **1.45%, 5.31% and 1.63%** in simulated profit on separate 113-day test windows. The RL policy failed the offline promotion gate; the decision service serves the validated base-stock rule by default. [Cross-store results](docs/CROSS_STORE_RESULTS.md) · [CA_1 report](docs/m5-ca1-report.json). These are simulated economics, not observed business profit.
+**Verified offline result:** an actor trained on **total portfolio return** by episodic policy search improved simulated profit on the predeclared WI_1 test by **4,590.80 units (+1.51%)** over the tuned rule. The paired seven-day-block 95% interval was **[+805.82, +8,490.15]**; fill rate and 10th-percentile daily profit also improved, so the actor passed the offline promotion gate. [WI_1 plan](docs/PORTFOLIO_POLICY_SEARCH_PLAN.md) · [Result](docs/PORTFOLIO_POLICY_SEARCH_RESULTS.md) · [Model bundle](models/wi1-policy-search). This is **simulated** profit, not an observed business result.
+
+The exact WI_1 coefficients **did not transfer** to WI_2 or WI_3: both test comparisons were −1.21% against their own tuned rules. [Predeclared transfer result](docs/TRANSFER_RESULTS.md). A [post-hoc stronger-rule sensitivity check](docs/STRONGER_BASELINE_SENSITIVITY.md) still left a +1.50% WI_1 actor advantage, but is labeled diagnostic because the WI_1 test had already been inspected.
+
+**Earlier experiments:** the complete M5 pipeline passes automated end-to-end tests and has been run on the official 120 MB M5 CSV. Across three CA stores, the pure Double DQN candidate underperformed a validation-tuned replenishment rule by **1.45%, 5.31% and 1.63%** in simulated profit on separate 113-day test windows. Those bundles still serve the validated base-stock rule. [Cross-store results](docs/CROSS_STORE_RESULTS.md) · [CA_1 report](docs/m5-ca1-report.json).
 
 The separately predeclared [CA_4 residual-RL study](docs/HYBRID_RESULTS.md) selected a nonzero RL adjustment on validation but finished **0.16% below** the tuned rule on its untouched test period. Its release gate also chose the baseline. All outcomes, including unfavorable ones, are published.
 
@@ -71,17 +75,30 @@ inventory-rl m5-allocation-run --data data/m5/sales_train_validation.csv \
 
 Validation chose the original scoring on TX_2. The [complete result](docs/ALLOCATION_RESULTS.md) records zero difference on its untouched test period, so the service's rule was not changed.
 
+## Portfolio-return policy search on WI_1
+
+The [predeclared WI_1 study](docs/PORTFOLIO_POLICY_SEARCH_PLAN.md) trains a five-feature, state-dependent residual around the tuned rule with a cross-entropy episodic RL search. Each candidate is scored on **whole-portfolio sequential profit**, so the learner directly sees the effect of shared budget allocation. A zero residual exactly reproduces the rule. Reproduce training and the fixed test with:
+
+```bash
+inventory-rl m5-policy-search-run --data data/m5/sales_train_validation.csv \
+  --store WI_1 --skus 64 --output artifacts/m5-wi1-policy-search
+```
+
+The command saves `report.json`, `actor_model.npz` and `actor_manifest.json`. The published [model bundle](models/wi1-policy-search) lets the v3 API serve the reviewed WI_1 actor without shipping the raw M5 CSV. [Full WI_1 result](docs/PORTFOLIO_POLICY_SEARCH_RESULTS.md).
+
+The frozen-coefficient transfer check is reproducible with `inventory-rl m5-transfer-run --data data/m5/sales_train_validation.csv`; the [WI_2/WI_3 report](docs/TRANSFER_RESULTS.md) documents the failures. The stronger-rule diagnostic is reproducible with `inventory-rl m5-sensitivity-run --data data/m5/sales_train_validation.csv` and is explicitly post-hoc.
+
 ## Deployment boundary
 
-The optional FastAPI service has `/v2/health` and `/v2/portfolio/recommendations`. It checks bundle integrity and portfolio dimensions, enforces budget and capacity, and **falls back to the validation-tuned base-stock rule when RL fails the offline promotion gate**. Responses name the active policy. Set `PORTFOLIO_MODEL_DIR` to the M5 artifact directory and run `uvicorn inventory_rl.api:app --host 127.0.0.1 --port 8000`. `ALLOW_UNPROMOTED=1` explicitly labels and enables the unpromoted RL policy for local demonstrations only. The repository also contains a Dockerfile; mount the reviewed artifact at `/models`.
+The optional FastAPI service has `/v2/health`, `/v2/portfolio/recommendations`, `/v3/health` and `/v3/portfolio/recommendations`. It checks bundle integrity and portfolio dimensions, enforces budget and capacity, and falls back to the validation-tuned rule when a candidate fails the offline promotion gate. The v3 endpoint loads the included WI_1 actor bundle by default and reports `policy_search_rl`; v2 bundles from failed studies report `base_stock`. Set `POLICY_SEARCH_MODEL_DIR` to override the v3 bundle and run `uvicorn inventory_rl.api:app --host 127.0.0.1 --port 8000`. `ALLOW_UNPROMOTED=1` explicitly labels and enables an unpromoted RL policy for local demonstrations only. The repository also contains a Dockerfile.
 
 The gate requires the lower 95% bound of paired profit uplift to be positive, a fill-rate drop of at most two percentage points, and no drop in 10th-percentile daily profit against the validation-tuned base-stock rule. Passing the gate is a research result, not purchasing approval. A [predeclared cross-store evaluation](docs/CROSS_STORE_PLAN.md) tests the pipeline in CA_2 and CA_3. The API does not include authentication, monitoring or integration with an ERP.
 
 ## What can go on a resume
 
-> Built a 64-SKU, shared-budget inventory RL platform on M5 item-level sales with a factored Double DQN, residual and heuristic-guided exploration ablations, action feasibility checks, chronological model selection, block-bootstrap evaluation, model manifest and guarded FastAPI serving. Across five store-level tests, no RL candidate passed the release gate; the service selected the tuned replenishment rule rather than claiming an unsupported uplift.
+> Built a 64-SKU, shared-budget inventory RL platform on M5 item-level sales. Trained a state-dependent actor with episodic portfolio-return policy search; on a predeclared WI_1 holdout it improved **simulated profit by 1.51%** over a validation-tuned replenishment rule (paired 95% interval +0.27% to +2.79%), with higher fill rate and downside daily profit. Published negative DQN and cross-store transfer results, versioned model bundles, constrained FastAPI serving and CI.
 
-Do not describe any of these simulated differences as real retail profit changes. M5 provides observed sales, which may be censored by historical stockouts; procurement costs, lead times and capacity in this project are simulated. The project demonstrates rigorous decision-system engineering and a release decision, not a proven business uplift.
+Do not describe the simulated difference as a real retail profit change or claim that the fixed actor generalizes across stores. M5 provides observed sales, which may be censored by historical stockouts; procurement costs, lead times and capacity in this project are simulated. The promoted WI_1 actor is an offline research result, not purchasing authorization.
 
 [中文简历与面试表述](docs/RESUME_CN.md).
 
@@ -95,6 +112,8 @@ Do not describe any of these simulated differences as real retail profit changes
 | Residual RL experiment | `src/inventory_rl/m5_hybrid.py`, `docs/HYBRID_PLAN.md`, `docs/HYBRID_RESULTS.md` |
 | Guided exploration ablation | `src/inventory_rl/m5_guided.py`, `docs/GUIDED_EXPLORATION_PLAN.md`, `docs/GUIDED_EXPLORATION_RESULTS.md` |
 | Allocation score study | `src/inventory_rl/m5_allocation.py`, `docs/ALLOCATION_PLAN.md`, `docs/ALLOCATION_RESULTS.md` |
+| Portfolio-return RL and transfer | `src/inventory_rl/m5_policy_search.py`, `src/inventory_rl/m5_transfer.py`, `docs/PORTFOLIO_POLICY_SEARCH_RESULTS.md`, `docs/TRANSFER_RESULTS.md` |
+| Post-hoc stronger baseline check | `src/inventory_rl/m5_sensitivity.py`, `docs/STRONGER_BASELINE_SENSITIVITY.md` |
 | Portable policy bundle and inference | `src/inventory_rl/portfolio_artifact.py`, `src/inventory_rl/api.py` |
 | Automated checks | `tests/`, `.github/workflows/ci.yml` |
 | Official-data evaluation and limitations | `docs/CROSS_STORE_RESULTS.md`, `docs/M5_RESULTS.md`, `docs/M5_PROTOCOL.md` |

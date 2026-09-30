@@ -1,0 +1,555 @@
+{
+  "analysis_status": "post-hoc sensitivity after WI_1 test was inspected",
+  "source_sha256": "f368e66ed1dbecb48b2cc8fc589bf68b3deddbbb36bf5c88b4d6d0a09b9b6724",
+  "actor_model_sha256": "71ac12c3f3ddf294f7070cf2843d0b89b7202a33f395eca026455df923a18117",
+  "candidate_count": 48,
+  "validation_candidates": [
+    {
+      "beta": 0.0,
+      "recent_sales": false,
+      "cover": 0.5,
+      "validation_profit": 174157.2
+    },
+    {
+      "beta": 0.0,
+      "recent_sales": false,
+      "cover": 1.0,
+      "validation_profit": 209979.7
+    },
+    {
+      "beta": 0.0,
+      "recent_sales": false,
+      "cover": 1.5,
+      "validation_profit": 233136.1
+    },
+    {
+      "beta": 0.0,
+      "recent_sales": false,
+      "cover": 2.0,
+      "validation_profit": 247889.44999999998
+    },
+    {
+      "beta": 0.0,
+      "recent_sales": false,
+      "cover": 3.0,
+      "validation_profit": 259434.15
+    },
+    {
+      "beta": 0.0,
+      "recent_sales": false,
+      "cover": 4.0,
+      "validation_profit": 259870.0
+    },
+    {
+      "beta": 0.0,
+      "recent_sales": false,
+      "cover": 5.0,
+      "validation_profit": 258630.65
+    },
+    {
+      "beta": 0.0,
+      "recent_sales": false,
+      "cover": 6.0,
+      "validation_profit": 257199.15
+    },
+    {
+      "beta": 0.0,
+      "recent_sales": true,
+      "cover": 0.5,
+      "validation_profit": 3536.9500000000003
+    },
+    {
+      "beta": 0.0,
+      "recent_sales": true,
+      "cover": 1.0,
+      "validation_profit": 78006.09999999999
+    },
+    {
+      "beta": 0.0,
+      "recent_sales": true,
+      "cover": 1.5,
+      "validation_profit": 162145.3
+    },
+    {
+      "beta": 0.0,
+      "recent_sales": true,
+      "cover": 2.0,
+      "validation_profit": 212800.2
+    },
+    {
+      "beta": 0.0,
+      "recent_sales": true,
+      "cover": 3.0,
+      "validation_profit": 243359.05
+    },
+    {
+      "beta": 0.0,
+      "recent_sales": true,
+      "cover": 4.0,
+      "validation_profit": 245418.4
+    },
+    {
+      "beta": 0.0,
+      "recent_sales": true,
+      "cover": 5.0,
+      "validation_profit": 237553.0
+    },
+    {
+      "beta": 0.0,
+      "recent_sales": true,
+      "cover": 6.0,
+      "validation_profit": 227941.3
+    },
+    {
+      "beta": 0.5,
+      "recent_sales": false,
+      "cover": 0.5,
+      "validation_profit": 174157.2
+    },
+    {
+      "beta": 0.5,
+      "recent_sales": false,
+      "cover": 1.0,
+      "validation_profit": 209979.1
+    },
+    {
+      "beta": 0.5,
+      "recent_sales": false,
+      "cover": 1.5,
+      "validation_profit": 233201.3
+    },
+    {
+      "beta": 0.5,
+      "recent_sales": false,
+      "cover": 2.0,
+      "validation_profit": 247981.7
+    },
+    {
+      "beta": 0.5,
+      "recent_sales": false,
+      "cover": 3.0,
+      "validation_profit": 259583.7
+    },
+    {
+      "beta": 0.5,
+      "recent_sales": false,
+      "cover": 4.0,
+      "validation_profit": 260056.1
+    },
+    {
+      "beta": 0.5,
+      "recent_sales": false,
+      "cover": 5.0,
+      "validation_profit": 259867.05
+    },
+    {
+      "beta": 0.5,
+      "recent_sales": false,
+      "cover": 6.0,
+      "validation_profit": 259064.2
+    },
+    {
+      "beta": 0.5,
+      "recent_sales": true,
+      "cover": 0.5,
+      "validation_profit": 3536.9500000000003
+    },
+    {
+      "beta": 0.5,
+      "recent_sales": true,
+      "cover": 1.0,
+      "validation_profit": 78006.09999999999
+    },
+    {
+      "beta": 0.5,
+      "recent_sales": true,
+      "cover": 1.5,
+      "validation_profit": 162145.3
+    },
+    {
+      "beta": 0.5,
+      "recent_sales": true,
+      "cover": 2.0,
+      "validation_profit": 212705.7
+    },
+    {
+      "beta": 0.5,
+      "recent_sales": true,
+      "cover": 3.0,
+      "validation_profit": 243292.65
+    },
+    {
+      "beta": 0.5,
+      "recent_sales": true,
+      "cover": 4.0,
+      "validation_profit": 246777.6
+    },
+    {
+      "beta": 0.5,
+      "recent_sales": true,
+      "cover": 5.0,
+      "validation_profit": 245538.55
+    },
+    {
+      "beta": 0.5,
+      "recent_sales": true,
+      "cover": 6.0,
+      "validation_profit": 240647.6
+    },
+    {
+      "beta": 1.0,
+      "recent_sales": false,
+      "cover": 0.5,
+      "validation_profit": 174157.2
+    },
+    {
+      "beta": 1.0,
+      "recent_sales": false,
+      "cover": 1.0,
+      "validation_profit": 209979.1
+    },
+    {
+      "beta": 1.0,
+      "recent_sales": false,
+      "cover": 1.5,
+      "validation_profit": 233332.45
+    },
+    {
+      "beta": 1.0,
+      "recent_sales": false,
+      "cover": 2.0,
+      "validation_profit": 248023.6
+    },
+    {
+      "beta": 1.0,
+      "recent_sales": false,
+      "cover": 3.0,
+      "validation_profit": 259836.7
+    },
+    {
+      "beta": 1.0,
+      "recent_sales": false,
+      "cover": 4.0,
+      "validation_profit": 260744.35
+    },
+    {
+      "beta": 1.0,
+      "recent_sales": false,
+      "cover": 5.0,
+      "validation_profit": 260791.15
+    },
+    {
+      "beta": 1.0,
+      "recent_sales": false,
+      "cover": 6.0,
+      "validation_profit": 260598.95
+    },
+    {
+      "beta": 1.0,
+      "recent_sales": true,
+      "cover": 0.5,
+      "validation_profit": 3536.9500000000003
+    },
+    {
+      "beta": 1.0,
+      "recent_sales": true,
+      "cover": 1.0,
+      "validation_profit": 78006.09999999999
+    },
+    {
+      "beta": 1.0,
+      "recent_sales": true,
+      "cover": 1.5,
+      "validation_profit": 161724.95
+    },
+    {
+      "beta": 1.0,
+      "recent_sales": true,
+      "cover": 2.0,
+      "validation_profit": 212421.69999999998
+    },
+    {
+      "beta": 1.0,
+      "recent_sales": true,
+      "cover": 3.0,
+      "validation_profit": 243889.35
+    },
+    {
+      "beta": 1.0,
+      "recent_sales": true,
+      "cover": 4.0,
+      "validation_profit": 249279.3
+    },
+    {
+      "beta": 1.0,
+      "recent_sales": true,
+      "cover": 5.0,
+      "validation_profit": 249637.95
+    },
+    {
+      "beta": 1.0,
+      "recent_sales": true,
+      "cover": 6.0,
+      "validation_profit": 248707.45
+    }
+  ],
+  "selected_stronger_rule": {
+    "beta": 1.0,
+    "recent_sales": false,
+    "cover": 5.0,
+    "validation_profit": 260791.15
+  },
+  "test": {
+    "actor": {
+      "profit": 308509.95,
+      "daily_profit": [
+        3123.2,
+        2052.7,
+        2067.45,
+        1548.3500000000001,
+        2273.45,
+        3439.75,
+        4103.6,
+        2294.7500000000005,
+        1867.05,
+        1817.65,
+        2002.25,
+        3067.7999999999997,
+        4250.25,
+        5007.45,
+        2758.3500000000004,
+        1886.6,
+        2565.3,
+        2448.2999999999997,
+        1360.3,
+        3200.25,
+        4096.099999999999,
+        3299.0999999999995,
+        1135.75,
+        1585.6,
+        1457.1999999999998,
+        2305.1499999999996,
+        3361.55,
+        5674.1,
+        3327.5499999999997,
+        1927.35,
+        1671.0,
+        1985.55,
+        1855.6,
+        2149.9,
+        5156.0,
+        2902.6499999999996,
+        1609.25,
+        1856.5500000000002,
+        2309.8500000000004,
+        2446.55,
+        3971.0,
+        3961.4,
+        2975.6,
+        2589.1000000000004,
+        2686.65,
+        2284.9,
+        2758.2,
+        3258.7,
+        4995.8,
+        3254.8,
+        2083.05,
+        1754.4499999999998,
+        2083.45,
+        2159.7,
+        2363.1000000000004,
+        3810.3500000000004,
+        3629.85,
+        2214.4,
+        608.1000000000001,
+        2414.7,
+        2776.95,
+        2390.25,
+        3985.9500000000003,
+        3231.9,
+        1439.0500000000002,
+        1945.9499999999998,
+        2495.75,
+        2088.1,
+        3238.15,
+        4234.1,
+        3439.4000000000005,
+        2206.5,
+        2042.1,
+        2809.5999999999995,
+        2386.6,
+        2871.25,
+        4705.349999999999,
+        4155.05,
+        2026.45,
+        2203.05,
+        2020.35,
+        1828.5500000000002,
+        4448.2,
+        5268.25,
+        2194.8,
+        1700.2,
+        1938.1499999999999,
+        1829.75,
+        1415.0,
+        3156.65,
+        3820.6,
+        4362.599999999999,
+        1397.5,
+        1647.3999999999996,
+        1405.75,
+        1769.85,
+        3181.2,
+        4599.25,
+        3247.8,
+        2167.45,
+        2198.6499999999996,
+        2119.7,
+        2368.35,
+        2918.3500000000004,
+        4330.45,
+        2713.8,
+        1817.05,
+        1701.9,
+        2290.0499999999997,
+        3021.8,
+        3679.7,
+        4220.049999999999,
+        3954.85
+      ],
+      "fill_rate": 0.8847171299948949,
+      "mean_daily_spend": 2047.0088495575221,
+      "days": 113,
+      "sku_count": 64
+    },
+    "stronger_rule": {
+      "profit": 303941.75,
+      "daily_profit": [
+        3123.2,
+        1890.55,
+        1680.8999999999999,
+        1401.8000000000002,
+        1997.6,
+        3346.45,
+        4240.1,
+        2178.05,
+        1756.9500000000003,
+        1695.3999999999999,
+        1856.75,
+        2991.15,
+        4047.75,
+        4710.3,
+        2695.95,
+        1608.05,
+        2467.65,
+        2518.65,
+        1277.65,
+        3115.05,
+        3654.8,
+        3169.2,
+        1157.8,
+        1549.45,
+        1426.4499999999998,
+        2275.0,
+        3483.3500000000004,
+        5494.1,
+        3393.5499999999997,
+        1921.05,
+        1681.9499999999998,
+        2096.1,
+        1813.0,
+        2012.35,
+        4910.75,
+        2881.95,
+        1626.35,
+        1786.8,
+        2324.1000000000004,
+        2571.3500000000004,
+        3992.0,
+        4211.450000000001,
+        2778.3499999999995,
+        2756.65,
+        2794.0499999999997,
+        2565.85,
+        2848.5,
+        3213.1000000000004,
+        4766.450000000001,
+        3048.4,
+        2046.8999999999996,
+        1764.35,
+        2011.75,
+        2064.3,
+        2321.55,
+        3713.3,
+        3641.25,
+        2394.5499999999997,
+        610.9499999999999,
+        2445.75,
+        2740.05,
+        2442.45,
+        4182.45,
+        3400.2,
+        1529.5,
+        1930.2,
+        2504.3,
+        2171.0499999999997,
+        3215.35,
+        4013.75,
+        3482.6000000000004,
+        2167.8,
+        2085.15,
+        2697.25,
+        2335.0,
+        2755.4500000000003,
+        4649.7,
+        4061.3,
+        1958.5,
+        2107.8,
+        1981.35,
+        1721.9,
+        4341.7,
+        5282.2,
+        2170.95,
+        1731.6999999999998,
+        1950.9000000000003,
+        1844.15,
+        1295.6,
+        3056.15,
+        3773.8,
+        3934.6499999999996,
+        1576.3,
+        1549.3,
+        1558.9,
+        1778.85,
+        2999.25,
+        4499.799999999999,
+        3242.8500000000004,
+        2124.55,
+        2267.95,
+        2091.2,
+        2345.8499999999995,
+        2927.5,
+        4477.299999999999,
+        2713.95,
+        1683.85,
+        1679.1,
+        2202.6499999999996,
+        2901.2,
+        3662.4500000000003,
+        4278.25,
+        4046.95
+      ],
+      "fill_rate": 0.8823966213393976,
+      "mean_daily_spend": 2048.0,
+      "days": 113,
+      "sku_count": 64
+    },
+    "paired_profit_uplift": 4568.200000000012,
+    "paired_uplift_block_bootstrap_ci95": [
+      1161.8150000000023,
+      7995.7974999999915
+    ],
+    "p10_daily_profit_actor": 1652.1199999999997,
+    "p10_daily_profit_rule": 1611.71
+  }
+}
