@@ -6,7 +6,7 @@ from pathlib import Path
 import numpy as np
 
 from inventory_rl.m5 import M5Series, load_m5
-from inventory_rl.m5_experiment import replay
+from inventory_rl.m5_experiment import block_bootstrap_ci, replay
 from inventory_rl.portfolio import (
     ORDER_CHOICES,
     PortfolioConfig,
@@ -168,6 +168,70 @@ def run_context_development(path: Path, output: Path, *, store_id: str = "WI_2",
             for c in fitted["checkpoints"]
         ],
         "training_histories": fitted["training_histories"],
+    }
+    output.mkdir(parents=True, exist_ok=True)
+    (output / "report.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+    return report
+
+
+def run_context_final(path: Path, output: Path, *, store_id: str = "TX_3",
+                      sku_count: int = 64, train_end: int = 1700,
+                      validation_end: int = 1800,
+                      seeds: tuple[int, ...] = (11, 22), iterations: int = 10,
+                      population: int = 8, window: int = 84) -> dict:
+    """Apply the frozen training and selection protocol once on a fresh store."""
+    data = load_m5(path, store_id=store_id, sku_count=sku_count,
+                   train_end=train_end, validation_end=validation_end)
+    config = PortfolioConfig()
+    baseline, baseline_candidates = select_strong_rule(data, config)
+    fitted = fit_context(data, config, baseline, seeds=seeds,
+                         iterations=iterations, population=population, window=window)
+    selected = fitted["selected"]
+    start, end = data.validation_end, data.sales.shape[1]
+    actor = replay_context(data, config, start, end, selected["theta"],
+                           cover=baseline["cover"], recent=baseline["recent_sales"],
+                           beta=baseline["beta"])
+    rule = replay(data, config, start, end, cover=baseline["cover"],
+                  recent=baseline["recent_sales"], baseline_beta=baseline["beta"])
+    ci = block_bootstrap_ci(actor["daily_profit"], rule["daily_profit"])
+    p10_actor = float(np.quantile(actor["daily_profit"], 0.1))
+    p10_rule = float(np.quantile(rule["daily_profit"], 0.1))
+    eligible = (np.linalg.norm(selected["theta"]) > 0 and ci[0] > 0 and
+                actor["fill_rate"] >= rule["fill_rate"] - 0.02 and
+                p10_actor >= p10_rule)
+    report = {
+        "dataset": {"name": "M5 sales_train_validation", "source_sha256": data.source_sha256,
+                    "store_id": store_id, "sku_count": data.n_sku,
+                    "train_days": [1, data.train_end],
+                    "validation_days": [data.train_end + 1, data.validation_end],
+                    "test_days": [data.validation_end + 1, end],
+                    "selected_item_ids": list(data.item_ids)},
+        "economics": vars(config),
+        "baseline_selection": baseline,
+        "baseline_validation_candidates": baseline_candidates,
+        "model_selection": {
+            "algorithm": "context-aware marginal-score CEM actor",
+            "features": N_CONTEXT_FEATURES, "seeds": list(seeds),
+            "iterations": iterations, "population": population, "window": window,
+            "selected_seed": selected["seed"],
+            "selected_iteration": selected["iteration"],
+            "selected_theta": selected["theta"].tolist(),
+            "selected_validation_profit": selected["validation_profit"],
+            "validation_checkpoints": [
+                {"seed": c["seed"], "iteration": c["iteration"],
+                 "theta": c["theta"].tolist(), "profit": c["validation_profit"]}
+                for c in fitted["checkpoints"]
+            ],
+            "training_histories": fitted["training_histories"],
+        },
+        "test": {"actor": actor, "strong_rule": rule,
+                 "paired_profit_uplift": actor["profit"] - rule["profit"],
+                 "paired_uplift_block_bootstrap_ci95": ci,
+                 "p10_daily_profit_actor": p10_actor,
+                 "p10_daily_profit_rule": p10_rule,
+                 "promotion_eligible": bool(eligible),
+                 "active_policy": "context_actor_rl" if eligible else "strong_rule"},
+        "caveat": "Observed sales are a censored demand proxy; economics and lead times are simulated.",
     }
     output.mkdir(parents=True, exist_ok=True)
     (output / "report.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")

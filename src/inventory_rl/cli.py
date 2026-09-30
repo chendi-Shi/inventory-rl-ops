@@ -11,6 +11,7 @@ from inventory_rl.artifact import load_model, save_model
 from inventory_rl.env import InventoryConfig, InventoryEnv
 from inventory_rl.evaluation import compare
 from inventory_rl.m5_allocation import run_allocation
+from inventory_rl.m5_context_actor import run_context_development, run_context_final
 from inventory_rl.m5_experiment import run as run_m5
 from inventory_rl.m5_guided import run_guided
 from inventory_rl.m5_hybrid import run_hybrid
@@ -111,6 +112,18 @@ def main() -> None:
     sensitivity_cmd.add_argument("--output", type=Path,
                                  default=Path("artifacts/m5-wi1-sensitivity"))
     sensitivity_cmd.add_argument("--skus", type=int, default=64)
+    context_dev_cmd = commands.add_parser("m5-context-dev",
+                                          help="train context actor without reading test")
+    context_dev_cmd.add_argument("--data", type=Path, required=True)
+    context_dev_cmd.add_argument("--output", type=Path, default=Path("artifacts/m5-wi2-context-dev"))
+    context_dev_cmd.add_argument("--store", default="WI_2")
+    context_dev_cmd.add_argument("--skus", type=int, default=64)
+    context_cmd = commands.add_parser("m5-context-run",
+                                      help="run fixed context actor holdout study")
+    context_cmd.add_argument("--data", type=Path, required=True)
+    context_cmd.add_argument("--output", type=Path, default=Path("artifacts/m5-tx3-context"))
+    context_cmd.add_argument("--store", default="TX_3")
+    context_cmd.add_argument("--skus", type=int, default=64)
     args = parser.parse_args()
     if args.command == "train":
         report = train(args.episodes, args.seed, args.output)
@@ -134,9 +147,15 @@ def main() -> None:
     elif args.command == "m5-transfer-run":
         report = run_transfer(args.data, args.actor, args.output,
                               stores=tuple(args.stores), sku_count=args.skus)
-    else:
+    elif args.command == "m5-sensitivity-run":
         report = run_sensitivity(args.data, args.actor, args.output,
                                  sku_count=args.skus)
+    elif args.command == "m5-context-dev":
+        report = run_context_development(args.data, args.output, store_id=args.store,
+                                         sku_count=args.skus)
+    else:
+        report = run_context_final(args.data, args.output, store_id=args.store,
+                                   sku_count=args.skus)
     print(json.dumps(report, indent=2))
 
 

@@ -7,7 +7,12 @@ import pytest
 from inventory_rl.agent import DQNAgent
 from inventory_rl.m5 import load_m5
 from inventory_rl.m5_allocation import run_allocation
-from inventory_rl.m5_context_actor import context_scores, replay_context, run_context_development
+from inventory_rl.m5_context_actor import (
+    context_scores,
+    replay_context,
+    run_context_development,
+    run_context_final,
+)
 from inventory_rl.m5_experiment import block_bootstrap_ci, replay, run
 from inventory_rl.m5_guided import run_guided
 from inventory_rl.m5_hybrid import run_hybrid
@@ -262,3 +267,12 @@ def test_context_actor_anchors_strong_rule_and_excludes_test_in_development():
     assert report["selected_actor"]["validation_profit"] >= report["baseline"][
         "validation_profit"
     ]
+    final = run_context_final(path, Path("artifacts/_test_context_final"),
+                              store_id="CA_1", sku_count=8, train_end=500,
+                              validation_end=550, seeds=(1,), iterations=1,
+                              population=2)
+    assert final["dataset"]["test_days"] == [551, 600]
+    assert final["test"]["actor"]["days"] == 50
+    assert final["test"]["active_policy"] == (
+        "context_actor_rl" if final["test"]["promotion_eligible"] else "strong_rule"
+    )
