@@ -14,6 +14,7 @@ from inventory_rl.m5_allocation import run_allocation
 from inventory_rl.m5_experiment import run as run_m5
 from inventory_rl.m5_guided import run_guided
 from inventory_rl.m5_hybrid import run_hybrid
+from inventory_rl.m5_policy_search import run_policy_search
 
 
 def train(episodes: int, seed: int, output: Path) -> dict:
@@ -88,6 +89,12 @@ def main() -> None:
     allocation_cmd.add_argument("--output", type=Path, default=Path("artifacts/m5-tx2-allocation"))
     allocation_cmd.add_argument("--store", default="TX_2")
     allocation_cmd.add_argument("--skus", type=int, default=64)
+    search_cmd = commands.add_parser("m5-policy-search-run",
+                                 help="train a portfolio-return policy-search actor")
+    search_cmd.add_argument("--data", type=Path, required=True)
+    search_cmd.add_argument("--output", type=Path, default=Path("artifacts/m5-wi1-policy-search"))
+    search_cmd.add_argument("--store", default="WI_1")
+    search_cmd.add_argument("--skus", type=int, default=64)
     args = parser.parse_args()
     if args.command == "train":
         report = train(args.episodes, args.seed, args.output)
@@ -103,8 +110,11 @@ def main() -> None:
     elif args.command == "m5-guided-run":
         report = run_guided(args.data, args.output, store_id=args.store, sku_count=args.skus,
                             episodes=args.episodes, seeds=tuple(args.seeds))
-    else:
+    elif args.command == "m5-allocation-run":
         report = run_allocation(args.data, args.output, store_id=args.store, sku_count=args.skus)
+    else:
+        report = run_policy_search(args.data, args.output, store_id=args.store,
+                                   sku_count=args.skus)
     print(json.dumps(report, indent=2))
 
 

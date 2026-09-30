@@ -10,6 +10,7 @@ from inventory_rl.m5_allocation import run_allocation
 from inventory_rl.m5_experiment import block_bootstrap_ci, replay, run
 from inventory_rl.m5_guided import run_guided
 from inventory_rl.m5_hybrid import run_hybrid
+from inventory_rl.m5_policy_search import actor_scores, replay_actor, run_policy_search
 from inventory_rl.portfolio import PortfolioEnv, allocate, base_stock_scores, residual_scores
 from inventory_rl.portfolio_artifact import load_portfolio_model, recommend_portfolio
 
@@ -152,4 +153,29 @@ def test_allocation_study_nests_old_rule_and_uses_release_gate():
     assert report["test"]["expanded_rule"]["days"] == 50
     assert report["test"]["active_rule"] == (
         "expanded" if report["test"]["adopt_expanded_rule"] else "old"
+    )
+
+
+def test_portfolio_policy_search_anchors_exact_rule_and_records_selection():
+    path = Path("artifacts/_test_m5.csv")
+    write_m5_fixture(path)
+    data = load_m5(path, sku_count=8, train_end=500, validation_end=550)
+    env = PortfolioEnv(data)
+    env.reset(500, 520)
+    np.testing.assert_array_equal(
+        actor_scores(env, np.zeros(5), cover=2.0, recent=False),
+        base_stock_scores(env.stock, env.pipeline.sum(axis=0), env.last_sales,
+                          env.mean_train, env.lead, cover=2.0, recent=False),
+    )
+    config = env.config
+    anchored = replay_actor(data, config, 550, 600, np.zeros(5), cover=2.0, recent=False)
+    rule = replay(data, config, 550, 600, cover=2.0, recent=False)
+    assert anchored["daily_profit"] == rule["daily_profit"]
+    report = run_policy_search(path, Path("artifacts/_test_policy_search"), store_id="CA_1",
+                               sku_count=8, train_end=500, validation_end=550,
+                               seeds=(1,), iterations=1, population=2)
+    assert len(report["model_selection"]["validation_checkpoints"]) == 2
+    assert report["test"]["actor"]["days"] == 50
+    assert report["test"]["active_policy"] == (
+        "policy_search_rl" if report["test"]["promotion_eligible"] else "base_stock"
     )
