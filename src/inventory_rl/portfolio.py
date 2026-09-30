@@ -11,11 +11,13 @@ ORDER_CHOICES = np.array([0, 4, 8, 16], dtype=np.int32)
 
 def base_stock_scores(stock: np.ndarray, pipeline: np.ndarray, last_sales: np.ndarray,
                       mean_train: np.ndarray, lead: np.ndarray, *, cover: float,
-                      recent: bool) -> np.ndarray:
+                      recent: bool, beta: float = 1.0) -> np.ndarray:
     """Score feasible packs for the validation-tuned replenishment rule."""
+    if not np.isfinite(beta) or beta < 0:
+        raise ValueError("beta must be finite and nonnegative")
     rate = last_sales.mean(axis=1) if recent else mean_train
     desired = np.maximum(rate * (lead + cover) - stock - pipeline, 0)
-    return -((ORDER_CHOICES[None, :] - desired[:, None]) ** 2) / (rate[:, None] + 1)
+    return -((ORDER_CHOICES[None, :] - desired[:, None]) ** 2) / (rate[:, None] + 1) ** beta
 
 
 def residual_scores(rule: np.ndarray, q_values: np.ndarray, alpha: float) -> np.ndarray:

@@ -6,10 +6,11 @@ import pytest
 
 from inventory_rl.agent import DQNAgent
 from inventory_rl.m5 import load_m5
+from inventory_rl.m5_allocation import run_allocation
 from inventory_rl.m5_experiment import block_bootstrap_ci, replay, run
 from inventory_rl.m5_guided import run_guided
 from inventory_rl.m5_hybrid import run_hybrid
-from inventory_rl.portfolio import PortfolioEnv, allocate, residual_scores
+from inventory_rl.portfolio import PortfolioEnv, allocate, base_stock_scores, residual_scores
 from inventory_rl.portfolio_artifact import load_portfolio_model, recommend_portfolio
 
 
@@ -126,3 +127,29 @@ def test_guided_ablation_preserves_family_comparison_and_fallback():
     )
     _, manifest = load_portfolio_model(output)
     assert manifest["hybrid_alpha"] == report["model_selection"]["selected_alpha"]
+
+
+def test_allocation_study_nests_old_rule_and_uses_release_gate():
+    path = Path("artifacts/_test_m5.csv")
+    write_m5_fixture(path)
+    data = load_m5(path, sku_count=8, train_end=500, validation_end=550)
+    env = PortfolioEnv(data)
+    env.reset(500, 520)
+    args = (env.stock, env.pipeline.sum(axis=0), env.last_sales,
+            env.mean_train, env.lead)
+    np.testing.assert_array_equal(
+        base_stock_scores(*args, cover=2.0, recent=False),
+        base_stock_scores(*args, cover=2.0, recent=False, beta=1.0),
+    )
+    report = run_allocation(path, Path("artifacts/_test_m5_allocation"),
+                            store_id="CA_1", sku_count=8, train_end=500,
+                            validation_end=550)
+    assert report["model_selection"]["candidate_count"] == 30
+    assert report["model_selection"]["old_rule"]["beta"] == 1.0
+    assert report["model_selection"]["expanded_rule"]["validation_profit"] >= (
+        report["model_selection"]["old_rule"]["validation_profit"]
+    )
+    assert report["test"]["expanded_rule"]["days"] == 50
+    assert report["test"]["active_rule"] == (
+        "expanded" if report["test"]["adopt_expanded_rule"] else "old"
+    )

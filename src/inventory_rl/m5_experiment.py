@@ -27,7 +27,7 @@ def rule_scores(env: PortfolioEnv, cover: float, recent: bool) -> np.ndarray:
 def replay(data: M5Series, config: PortfolioConfig, start: int, end: int,
            agent: DQNAgent | None = None, *, cover: float = 1.0,
            recent: bool = True, random_seed: int | None = None,
-           hybrid_alpha: float | None = None) -> dict:
+           hybrid_alpha: float | None = None, baseline_beta: float = 1.0) -> dict:
     env = PortfolioEnv(data, config)
     state = env.reset(start, end)
     rng = np.random.default_rng(random_seed)
@@ -41,7 +41,9 @@ def replay(data: M5Series, config: PortfolioConfig, start: int, end: int,
             scores = (q_values if hybrid_alpha is None else
                       residual_scores(rule_scores(env, cover, recent), q_values, hybrid_alpha))
         else:
-            scores = rule_scores(env, cover, recent)
+            scores = base_stock_scores(env.stock, env.pipeline.sum(axis=0), env.last_sales,
+                                       env.mean_train, env.lead, cover=cover, recent=recent,
+                                       beta=baseline_beta)
         orders = allocate(scores, stock=env.stock, pipeline=env.pipeline.sum(axis=0),
                           budget=env.budget, capacity=env.capacity,
                           unit_cost=config.unit_cost)
