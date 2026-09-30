@@ -5,7 +5,7 @@ import numpy as np
 import pytest
 
 from inventory_rl.agent import DQNAgent
-from inventory_rl.m5 import load_m5
+from inventory_rl.m5 import M5Series, load_m5
 from inventory_rl.m5_allocation import run_allocation
 from inventory_rl.m5_context_actor import (
     context_scores,
@@ -18,8 +18,15 @@ from inventory_rl.m5_guided import run_guided
 from inventory_rl.m5_hybrid import run_hybrid
 from inventory_rl.m5_policy_search import actor_scores, replay_actor, run_policy_search
 from inventory_rl.m5_sensitivity import run_sensitivity
+from inventory_rl.m5_stress import evaluate_frozen_policy
 from inventory_rl.m5_transfer import run_transfer
-from inventory_rl.portfolio import PortfolioEnv, allocate, base_stock_scores, residual_scores
+from inventory_rl.portfolio import (
+    PortfolioConfig,
+    PortfolioEnv,
+    allocate,
+    base_stock_scores,
+    residual_scores,
+)
 from inventory_rl.portfolio_artifact import load_portfolio_model, recommend_portfolio
 
 
@@ -46,6 +53,23 @@ def test_selection_uses_training_period_only():
     assert data.sales.shape == (8, 600)
     assert "item_8" not in data.item_ids  # future spike must not affect selection
     assert "other" not in data.item_ids
+
+
+def test_frozen_stress_zero_actor_matches_rule_and_rejects_wrong_item_order():
+    data = M5Series("TX_3", ("a", "b"), np.full((2, 50), 2, dtype=np.int32),
+                    30, 35, "fixture-sha256")
+    manifest = {"store_id": "TX_3", "item_ids": ["a", "b"],
+                "source_sha256": "fixture-sha256",
+                "baseline_selection": {"cover": 2.0, "recent_sales": False, "beta": 1.0}}
+    base = evaluate_frozen_policy(data, np.zeros(9), manifest,
+                                  "context", PortfolioConfig())
+    stress = evaluate_frozen_policy(data, np.zeros(9), manifest, "context",
+                                    PortfolioConfig(budget_per_sku=24.0))
+    assert base["profit_difference"] == stress["profit_difference"] == 0
+    assert base["actor_profit"] == base["rule_profit"]
+    manifest["item_ids"] = ["b", "a"]
+    with pytest.raises(ValueError, match="item order"):
+        evaluate_frozen_policy(data, np.zeros(9), manifest, "context", PortfolioConfig())
 
 
 def test_allocator_and_replay_constraints():

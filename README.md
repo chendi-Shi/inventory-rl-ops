@@ -4,9 +4,15 @@ A portfolio-scale reinforcement learning system for **64 SKUs sharing one wareho
 
 **Verified offline result:** an actor trained on **total portfolio return** by episodic policy search improved simulated profit on the predeclared WI_1 test by **4,590.80 units (+1.51%)** over the tuned rule. The paired seven-day-block 95% interval was **[+805.82, +8,490.15]**; fill rate and 10th-percentile daily profit also improved, so the actor passed the offline promotion gate. [WI_1 plan](docs/PORTFOLIO_POLICY_SEARCH_PLAN.md) · [Result](docs/PORTFOLIO_POLICY_SEARCH_RESULTS.md) · [Model bundle](models/wi1-policy-search). This is **simulated** profit, not an observed business result.
 
-**Second held-out result:** a separately trained context-aware actor improved TX_3 simulated profit by **3,768.80 units (+1.49%)** over a stronger rule selected from 48 validation candidates. The paired 95% interval was **[+763.18, +6,993.33]**; fill rate and downside daily profit also improved. [TX_3 plan](docs/CONTEXT_ACTOR_PLAN.md) · [Result](docs/CONTEXT_ACTOR_RESULTS.md) · [Model bundle](models/tx3-context). This actor adjusts SKU priority when the shared purchasing budget is scarce.
+**Second store-level holdout result:** a separately trained context-aware actor improved TX_3 simulated profit by **3,768.80 units (+1.49%)** over a stronger rule selected from 48 validation candidates. The paired 95% interval was **[+763.18, +6,993.33]**; fill rate and downside daily profit also improved. [TX_3 plan](docs/CONTEXT_ACTOR_PLAN.md) · [Result](docs/CONTEXT_ACTOR_RESULTS.md) · [Model bundle](models/tx3-context). This actor adjusts SKU priority when the shared purchasing budget is scarce.
 
 The exact WI_1 coefficients **did not transfer** to WI_2 or WI_3: both test comparisons were −1.21% against their own tuned rules. [Predeclared transfer result](docs/TRANSFER_RESULTS.md). A [post-hoc stronger-rule sensitivity check](docs/STRONGER_BASELINE_SENSITIVITY.md) still left a +1.50% WI_1 actor advantage, but is labeled diagnostic because the WI_1 test had already been inspected.
+
+WI_1 and TX_3 were held out at the **store level**, with separate policy training and plans fixed before each store's test. They share M5 calendar days 1801–1913, and the methods were refined after results from other stores became known. They are not two independent future time periods. A fresh data period is needed to confirm performance beyond this retrospective project.
+
+A [post-hoc economic stress test](docs/ECONOMICS_STRESS_RESULTS.md) replays the frozen policies under changed prices, penalties and purchasing resources. WI_1's simulated profit advantage reverses when the budget falls by 25% or procurement unit cost rises by 25%; TX_3 remains slightly positive in point estimate in those cases but its exploratory interval crosses zero. These limits are part of the published result, not additional independent validations.
+
+A separate [accounting audit](docs/ACCOUNTING_AUDIT.md) replays every published test day and reconciles the profit differences to sales revenue, purchase cost, inventory holding and lost-sale penalties. It also reports terminal on-hand and in-transit units, which the finite-window simulator gives no salvage value.
 
 **Earlier experiments:** the complete M5 pipeline passes automated end-to-end tests and has been run on the official 120 MB M5 CSV. Across three CA stores, the pure Double DQN candidate underperformed a validation-tuned replenishment rule by **1.45%, 5.31% and 1.63%** in simulated profit on separate 113-day test windows. Those bundles still serve the validated base-stock rule. [Cross-store results](docs/CROSS_STORE_RESULTS.md) · [CA_1 report](docs/m5-ca1-report.json).
 
@@ -101,15 +107,28 @@ inventory-rl m5-context-run --data data/m5/sales_train_validation.csv \
 
 The two development validation runs are reproduced with `inventory-rl m5-context-dev --data data/m5/sales_train_validation.csv --store WI_2` and the same command for `WI_3`; these commands do not evaluate test days. The [TX_3 result](docs/CONTEXT_ACTOR_RESULTS.md) passed the same offline release gate. Its reviewed [model bundle](models/tx3-context) can be served without the M5 source CSV.
 
+## Post-hoc economics stress test
+
+Run the released WI_1 and TX_3 models with unchanged coefficients and unchanged rule parameters across a fixed set of alternative simulated prices, penalties and purchasing resources:
+
+```bash
+inventory-rl m5-stress-run --data data/m5/sales_train_validation.csv \
+  --output artifacts/m5-stress
+```
+
+The [report](docs/ECONOMICS_STRESS_RESULTS.md) includes each replay's profit difference, fill rate and paired seven-day-block interval. These are retrospective diagnostics on already inspected test days and cannot be used as fresh performance confirmation.
+
 ## Deployment boundary
 
 The optional FastAPI service has versioned health and recommendation endpoints. It checks bundle integrity and portfolio dimensions, enforces budget and capacity, and falls back to the validation-tuned rule when a candidate fails the offline promotion gate. `/v3/portfolio/recommendations` loads the promoted WI_1 actor; `/v4/portfolio/recommendations` loads the promoted TX_3 context actor. v2 bundles from failed studies report `base_stock`. Set `POLICY_SEARCH_MODEL_DIR` or `CONTEXT_MODEL_DIR` to override the included bundles and run `uvicorn inventory_rl.api:app --host 127.0.0.1 --port 8000`. `ALLOW_UNPROMOTED=1` explicitly labels and enables an unpromoted RL policy for local demonstrations only. The repository also contains a Dockerfile.
 
-The gate requires the lower 95% bound of paired profit uplift to be positive, a fill-rate drop of at most two percentage points, and no drop in 10th-percentile daily profit against the validation-tuned base-stock rule. Passing the gate is a research result, not purchasing approval. A [predeclared cross-store evaluation](docs/CROSS_STORE_PLAN.md) tests the pipeline in CA_2 and CA_3. The API does not include authentication, monitoring or integration with an ERP.
+Version 4 requires each request to include the exact SKU order or its fingerprint. `/v4/health` returns both, plus the source and model fingerprints. See the [v4 request and response contract](docs/API_V4.md) for the input shapes and a shape-only client example.
+
+The gate requires the lower 95% bound of paired profit uplift to be positive, a fill-rate drop of at most two percentage points, and no drop in 10th-percentile daily profit against the validation-tuned base-stock rule. Passing the gate is a research result, not purchasing approval. The test outcomes also decide which policy bundle is marked active, so these same test days cannot independently validate an already released policy. A new period and operational shadow run are needed for that. A [predeclared cross-store evaluation](docs/CROSS_STORE_PLAN.md) tests the pipeline in CA_2 and CA_3. The API does not include authentication, monitoring or integration with an ERP.
 
 ## What can go on a resume
 
-> Built a 64-SKU, shared-budget inventory RL platform on M5 item-level sales. Whole-portfolio policy-search actors improved **simulated profit by 1.51% on WI_1 and 1.49% on TX_3** in separately predeclared store-level tests against validation-tuned rules, with positive paired 95% lower bounds and higher fill rates. Published negative DQN and frozen-transfer results, versioned model bundles, constrained FastAPI serving and CI.
+> Built a 64-SKU, shared-budget inventory RL platform on M5 item-level sales. Separately trained whole-portfolio policy-search actors improved **simulated profit by 1.51% on WI_1 and 1.49% on TX_3** in predeclared store-level holdouts against validation-tuned rules, with positive paired 95% lower bounds and higher fill rates. Published negative DQN and frozen-transfer results, versioned model bundles, constrained FastAPI serving and CI.
 
 Do not describe the simulated differences as real retail profit changes or claim that one fixed actor generalizes across stores. M5 provides observed sales, which may be censored by historical stockouts; procurement costs, lead times and capacity in this project are simulated. Both actors are offline research results, not purchasing authorization.
 
@@ -127,6 +146,7 @@ Do not describe the simulated differences as real retail profit changes or claim
 | Allocation score study | `src/inventory_rl/m5_allocation.py`, `docs/ALLOCATION_PLAN.md`, `docs/ALLOCATION_RESULTS.md` |
 | Portfolio-return RL and transfer | `src/inventory_rl/m5_policy_search.py`, `src/inventory_rl/m5_transfer.py`, `docs/PORTFOLIO_POLICY_SEARCH_RESULTS.md`, `docs/TRANSFER_RESULTS.md` |
 | Context-aware actor on TX_3 | `src/inventory_rl/m5_context_actor.py`, `docs/CONTEXT_ACTOR_PLAN.md`, `docs/CONTEXT_ACTOR_RESULTS.md` |
+| Retrospective stress and accounting audits | `src/inventory_rl/m5_stress.py`, `src/inventory_rl/m5_accounting.py`, `docs/ECONOMICS_STRESS_RESULTS.md`, `docs/ACCOUNTING_AUDIT.md` |
 | Post-hoc stronger baseline check | `src/inventory_rl/m5_sensitivity.py`, `docs/STRONGER_BASELINE_SENSITIVITY.md` |
 | Portable policy bundles and inference | `src/inventory_rl/portfolio_artifact.py`, `src/inventory_rl/policy_search_artifact.py`, `src/inventory_rl/context_artifact.py`, `src/inventory_rl/api.py` |
 | Automated checks | `tests/`, `.github/workflows/ci.yml` |

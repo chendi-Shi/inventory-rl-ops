@@ -17,6 +17,7 @@ from inventory_rl.m5_guided import run_guided
 from inventory_rl.m5_hybrid import run_hybrid
 from inventory_rl.m5_policy_search import run_policy_search
 from inventory_rl.m5_sensitivity import run_sensitivity
+from inventory_rl.m5_stress import run_stress
 from inventory_rl.m5_transfer import run_transfer
 
 
@@ -124,6 +125,14 @@ def main() -> None:
     context_cmd.add_argument("--output", type=Path, default=Path("artifacts/m5-tx3-context"))
     context_cmd.add_argument("--store", default="TX_3")
     context_cmd.add_argument("--skus", type=int, default=64)
+    stress_cmd = commands.add_parser("m5-stress-run",
+                                     help="post-hoc economics stress of frozen M5 policies")
+    stress_cmd.add_argument("--data", type=Path, required=True)
+    stress_cmd.add_argument("--output", type=Path, default=Path("artifacts/m5-stress"))
+    stress_cmd.add_argument("--context-bundle", type=Path,
+                            default=Path("models/tx3-context"))
+    stress_cmd.add_argument("--policy-search-bundle", type=Path,
+                            default=Path("models/wi1-policy-search"))
     args = parser.parse_args()
     if args.command == "train":
         report = train(args.episodes, args.seed, args.output)
@@ -153,9 +162,13 @@ def main() -> None:
     elif args.command == "m5-context-dev":
         report = run_context_development(args.data, args.output, store_id=args.store,
                                          sku_count=args.skus)
-    else:
+    elif args.command == "m5-context-run":
         report = run_context_final(args.data, args.output, store_id=args.store,
                                    sku_count=args.skus)
+    else:
+        report = run_stress(args.data, args.output,
+                            context_bundle=args.context_bundle,
+                            policy_search_bundle=args.policy_search_bundle)
     print(json.dumps(report, indent=2))
 
 

@@ -1,4 +1,4 @@
-# TX_3 context-aware RL: second held-out simulated-profit improvement
+# TX_3 context-aware RL: second store-level holdout improvement
 
 This study followed the [predeclared TX_3 plan](CONTEXT_ACTOR_PLAN.md). The new actor was designed using WI_2 and WI_3 **training and validation data only**; their development reports are [WI_2](m5-wi2-context-dev-report.json) and [WI_3](m5-wi3-context-dev-report.json). The TX_3 [machine-readable final report](m5-tx3-context-report.json) contains the official M5 source checksum, selected SKUs, all 48 baseline candidates, training windows, actor checkpoints and daily test profits. The [integrity-checked model bundle](../models/tx3-context) is included for the guarded v4 API.
 
@@ -13,4 +13,8 @@ The actor's paired simulated-profit difference was **+3,768.80 (+1.49%)**, with 
 
 The zero-parameter actor exactly reproduces the strong rule, and both policies use the same hard budget and capacity allocator. The new actor adjusts SKU priority using local sales/inventory features and portfolio budget pressure; its coefficients were learned from whole-portfolio sequential return. This is a **separately trained** TX_3 policy, not the WI_1 actor transplanted across stores. The WI_1 coefficients failed frozen transfer on WI_2/WI_3, as [reported](TRANSFER_RESULTS.md). WI_1 and TX_3 provide two predeclared positive *store-specific* offline results, not evidence that one universal set of coefficients works across stores.
 
+Both store tests cover the **same M5 calendar days 1801–1913**. The TX_3 method was developed after other stores' test outcomes were known, although TX_3 itself was not evaluated before its plan was committed. These are two store-level holdouts, not two independent future time periods or a fresh prospective replication.
+
 M5 contains observed sales, not unconstrained demand, and may hide historical stockouts. Prices, procurement/holding costs, penalties, budget, capacity and lead times are simulated. The figures are not observed business profit, and the day-block interval does not capture uncertainty across economic assumptions or future stores.
+
+A later [retrospective economic stress test](ECONOMICS_STRESS_RESULTS.md) keeps this actor and rule frozen. TX_3's point advantage stays positive in its tested scenarios but becomes only +91.65 simulated units with 25% higher unit procurement cost; the exploratory interval crosses zero. This is a diagnostic on the same test period, not a fresh holdout.

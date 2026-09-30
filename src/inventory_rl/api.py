@@ -6,7 +6,7 @@ from pathlib import Path
 
 import numpy as np
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, StrictInt
 
 from inventory_rl.artifact import load_model
 from inventory_rl.context_artifact import load_context_model, recommend_context
@@ -27,6 +27,17 @@ class PortfolioRequest(BaseModel):
     stock: list[int]
     pipeline: list[list[int]]
     last_sales: list[list[int]]
+
+
+class ContextPortfolioRequest(PortfolioRequest):
+    """v4 input requires proof of the positional SKU order."""
+
+    day: StrictInt = Field(ge=0)
+    stock: list[StrictInt]
+    pipeline: list[list[StrictInt]]
+    last_sales: list[list[StrictInt]]
+    item_ids: list[str] | None = None
+    sku_order_sha256: str | None = None
 
 
 app = FastAPI(title="Inventory RL Decision Service", version="0.1.0")
@@ -153,21 +164,31 @@ def context_health() -> dict:
     except (OSError, ValueError, KeyError, TypeError) as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     return {"status": "ready", "model_sha256": manifest["model_sha256"],
+            "manifest_sha256": manifest["manifest_sha256"],
+            "source_sha256": manifest["source_sha256"],
+            "store_id": manifest["store_id"],
+            "sku_order_sha256": manifest["sku_order_sha256"],
             "promotion_eligible": manifest["promotion_eligible"],
             "active_policy": manifest["active_policy"],
-            "sku_count": len(manifest["item_ids"])}
+            "sku_count": len(manifest["item_ids"]),
+            "item_ids": manifest["item_ids"]}
 
 
 @app.post("/v4/portfolio/recommendations")
-def recommend_context_actor(request: PortfolioRequest) -> dict:
+def recommend_context_actor(request: ContextPortfolioRequest) -> dict:
     try:
         theta, manifest = context_model_bundle()
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    try:
         return recommend_context(
             theta, manifest, day=request.day,
-            stock=np.asarray(request.stock, dtype=float),
-            pipeline=np.asarray(request.pipeline, dtype=float),
-            last_sales=np.asarray(request.last_sales, dtype=float),
+            stock=np.asarray(request.stock),
+            pipeline=np.asarray(request.pipeline),
+            last_sales=np.asarray(request.last_sales),
             force_actor=os.environ.get("ALLOW_UNPROMOTED") == "1",
+            item_ids=getattr(request, "item_ids", None),
+            sku_order_sha256=getattr(request, "sku_order_sha256", None),
         )
-    except (OSError, ValueError, KeyError, TypeError) as exc:
+    except (OSError, ValueError, KeyError, TypeError, OverflowError) as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc

@@ -1,0 +1,193 @@
+{
+  "analysis_status": "post-hoc accounting diagnostic; shared M5 calendar days",
+  "stores": [
+    {
+      "analysis_status": "post-hoc accounting diagnostic; no new independent test",
+      "store_id": "WI_1",
+      "family": "policy_search",
+      "source_sha256": "f368e66ed1dbecb48b2cc8fc589bf68b3deddbbb36bf5c88b4d6d0a09b9b6724",
+      "model_sha256": "71ac12c3f3ddf294f7070cf2843d0b89b7202a33f395eca026455df923a18117",
+      "test_days": [
+        1801,
+        1913
+      ],
+      "economics": {
+        "budget_per_sku": 32.0,
+        "capacity_per_sku": 50,
+        "unit_price": 10.0,
+        "unit_cost": 4.0,
+        "holding_cost": 0.15,
+        "lost_sale_penalty": 2.0
+      },
+      "actor": {
+        "units": {
+          "demand_units": 64641,
+          "sold_units": 57189,
+          "lost_units": 7452,
+          "ordered_units": 57828,
+          "held_inventory_unit_days": 114427
+        },
+        "amounts": {
+          "sales_revenue": 571890.0,
+          "procurement_cost": 231312.0,
+          "holding_cost": 17164.05,
+          "lost_sale_penalty": 14904.0
+        },
+        "profit": 308509.95,
+        "fill_rate": 0.8847171299948949,
+        "mean_daily_spend": 2047.0088495575221,
+        "terminal": {
+          "on_hand_units": 1569,
+          "pipeline_units": 516,
+          "position_units": 2085
+        }
+      },
+      "rule": {
+        "units": {
+          "demand_units": 64641,
+          "sold_units": 56582,
+          "lost_units": 8059,
+          "ordered_units": 56984,
+          "held_inventory_unit_days": 118979
+        },
+        "amounts": {
+          "sales_revenue": 565820.0,
+          "procurement_cost": 227936.0,
+          "holding_cost": 17846.85,
+          "lost_sale_penalty": 16118.0
+        },
+        "profit": 303919.15,
+        "fill_rate": 0.8753268049689825,
+        "mean_daily_spend": 2017.132743362832,
+        "terminal": {
+          "on_hand_units": 1320,
+          "pipeline_units": 528,
+          "position_units": 1848
+        }
+      },
+      "actor_minus_rule": {
+        "units": {
+          "demand_units": 0,
+          "sold_units": 607,
+          "lost_units": -607,
+          "ordered_units": 844,
+          "held_inventory_unit_days": -4552
+        },
+        "amounts": {
+          "sales_revenue": 6070.0,
+          "procurement_cost": 3376.0,
+          "holding_cost": -682.8,
+          "lost_sale_penalty": -1214.0
+        },
+        "profit_effect": {
+          "sales_revenue": 6070.0,
+          "procurement_cost": -3376.0,
+          "holding_cost": 682.8,
+          "lost_sale_penalty": 1214.0
+        },
+        "terminal": {
+          "on_hand_units": 249,
+          "pipeline_units": -12,
+          "position_units": 237
+        },
+        "profit": 4590.8
+      },
+      "published_profit_difference": 4590.8,
+      "reconciliation_error": 0.0
+    },
+    {
+      "analysis_status": "post-hoc accounting diagnostic; no new independent test",
+      "store_id": "TX_3",
+      "family": "context",
+      "source_sha256": "f368e66ed1dbecb48b2cc8fc589bf68b3deddbbb36bf5c88b4d6d0a09b9b6724",
+      "model_sha256": "f7abb861d378a6eecc557a3a371ad2de726a32fee1b0ef093a57bde7ed9755e5",
+      "test_days": [
+        1801,
+        1913
+      ],
+      "economics": {
+        "budget_per_sku": 32.0,
+        "capacity_per_sku": 50,
+        "unit_price": 10.0,
+        "unit_cost": 4.0,
+        "holding_cost": 0.15,
+        "lost_sale_penalty": 2.0
+      },
+      "actor": {
+        "units": {
+          "demand_units": 98473,
+          "sold_units": 57829,
+          "lost_units": 40644,
+          "ordered_units": 57856,
+          "held_inventory_unit_days": 59518
+        },
+        "amounts": {
+          "sales_revenue": 578290.0,
+          "procurement_cost": 231424.0,
+          "holding_cost": 8927.7,
+          "lost_sale_penalty": 81288.0
+        },
+        "profit": 256650.3,
+        "fill_rate": 0.5872574208158582,
+        "mean_daily_spend": 2048.0,
+        "terminal": {
+          "on_hand_units": 1070,
+          "pipeline_units": 540,
+          "position_units": 1610
+        }
+      },
+      "rule": {
+        "units": {
+          "demand_units": 98473,
+          "sold_units": 57335,
+          "lost_units": 41138,
+          "ordered_units": 57372,
+          "held_inventory_unit_days": 58030
+        },
+        "amounts": {
+          "sales_revenue": 573350.0,
+          "procurement_cost": 229488.0,
+          "holding_cost": 8704.5,
+          "lost_sale_penalty": 82276.0
+        },
+        "profit": 252881.5,
+        "fill_rate": 0.5822408172798635,
+        "mean_daily_spend": 2030.867256637168,
+        "terminal": {
+          "on_hand_units": 1080,
+          "pipeline_units": 540,
+          "position_units": 1620
+        }
+      },
+      "actor_minus_rule": {
+        "units": {
+          "demand_units": 0,
+          "sold_units": 494,
+          "lost_units": -494,
+          "ordered_units": 484,
+          "held_inventory_unit_days": 1488
+        },
+        "amounts": {
+          "sales_revenue": 4940.0,
+          "procurement_cost": 1936.0,
+          "holding_cost": 223.2,
+          "lost_sale_penalty": -988.0
+        },
+        "profit_effect": {
+          "sales_revenue": 4940.0,
+          "procurement_cost": -1936.0,
+          "holding_cost": -223.2,
+          "lost_sale_penalty": 988.0
+        },
+        "terminal": {
+          "on_hand_units": -10,
+          "pipeline_units": 0,
+          "position_units": -10
+        },
+        "profit": 3768.8
+      },
+      "published_profit_difference": 3768.8,
+      "reconciliation_error": 0.0
+    }
+  ]
+}

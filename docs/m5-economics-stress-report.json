@@ -1,0 +1,445 @@
+{
+  "analysis_status": "post-hoc diagnostic on previously inspected test periods",
+  "policy_selection": "frozen model weights, SKU order and validation-selected rule",
+  "interpretation": "Scenario outcomes are descriptive, not independent confirmations or confidence intervals for future stores or real business profit.",
+  "results": [
+    {
+      "store_id": "TX_3",
+      "policy_kind": "context",
+      "model_sha256": "f7abb861d378a6eecc557a3a371ad2de726a32fee1b0ef093a57bde7ed9755e5",
+      "source_sha256": "f368e66ed1dbecb48b2cc8fc589bf68b3deddbbb36bf5c88b4d6d0a09b9b6724",
+      "test_days": [
+        1801,
+        1913
+      ],
+      "scenarios": [
+        {
+          "scenario": "original",
+          "economics": {
+            "budget_per_sku": 32.0,
+            "capacity_per_sku": 50,
+            "unit_price": 10.0,
+            "unit_cost": 4.0,
+            "holding_cost": 0.15,
+            "lost_sale_penalty": 2.0
+          },
+          "actor_profit": 256650.3,
+          "rule_profit": 252881.5,
+          "profit_difference": 3768.7999999999884,
+          "paired_profit_difference_ci95_7day": [
+            763.1775000000043,
+            6993.327500000002
+          ],
+          "uplift_pct_of_abs_rule_profit": 1.4903423144832613,
+          "actor_fill_rate": 0.5872574208158582,
+          "rule_fill_rate": 0.5822408172798635,
+          "actor_mean_daily_spend": 2048.0,
+          "rule_mean_daily_spend": 2030.867256637168
+        },
+        {
+          "scenario": "sale_price_20pct_lower",
+          "economics": {
+            "budget_per_sku": 32.0,
+            "capacity_per_sku": 50,
+            "unit_price": 8.0,
+            "unit_cost": 4.0,
+            "holding_cost": 0.15,
+            "lost_sale_penalty": 2.0
+          },
+          "actor_profit": 140992.3,
+          "rule_profit": 138211.5,
+          "profit_difference": 2780.7999999999884,
+          "paired_profit_difference_ci95_7day": [
+            307.9437499999964,
+            5490.604999999998
+          ],
+          "uplift_pct_of_abs_rule_profit": 2.01198887212713,
+          "actor_fill_rate": 0.5872574208158582,
+          "rule_fill_rate": 0.5822408172798635,
+          "actor_mean_daily_spend": 2048.0,
+          "rule_mean_daily_spend": 2030.867256637168
+        },
+        {
+          "scenario": "sale_price_20pct_higher",
+          "economics": {
+            "budget_per_sku": 32.0,
+            "capacity_per_sku": 50,
+            "unit_price": 12.0,
+            "unit_cost": 4.0,
+            "holding_cost": 0.15,
+            "lost_sale_penalty": 2.0
+          },
+          "actor_profit": 372308.3,
+          "rule_profit": 367551.5,
+          "profit_difference": 4756.799999999988,
+          "paired_profit_difference_ci95_7day": [
+            1253.2912500000052,
+            8486.423750000005
+          ],
+          "uplift_pct_of_abs_rule_profit": 1.2941859848211716,
+          "actor_fill_rate": 0.5872574208158582,
+          "rule_fill_rate": 0.5822408172798635,
+          "actor_mean_daily_spend": 2048.0,
+          "rule_mean_daily_spend": 2030.867256637168
+        },
+        {
+          "scenario": "no_lost_sale_penalty",
+          "economics": {
+            "budget_per_sku": 32.0,
+            "capacity_per_sku": 50,
+            "unit_price": 10.0,
+            "unit_cost": 4.0,
+            "holding_cost": 0.15,
+            "lost_sale_penalty": 0.0
+          },
+          "actor_profit": 337938.3,
+          "rule_profit": 335157.5,
+          "profit_difference": 2780.7999999999884,
+          "paired_profit_difference_ci95_7day": [
+            307.94375000000355,
+            5490.604999999999
+          ],
+          "uplift_pct_of_abs_rule_profit": 0.8296994696523242,
+          "actor_fill_rate": 0.5872574208158582,
+          "rule_fill_rate": 0.5822408172798635,
+          "actor_mean_daily_spend": 2048.0,
+          "rule_mean_daily_spend": 2030.867256637168
+        },
+        {
+          "scenario": "lost_sale_penalty_doubled",
+          "economics": {
+            "budget_per_sku": 32.0,
+            "capacity_per_sku": 50,
+            "unit_price": 10.0,
+            "unit_cost": 4.0,
+            "holding_cost": 0.15,
+            "lost_sale_penalty": 4.0
+          },
+          "actor_profit": 175362.3,
+          "rule_profit": 170605.5,
+          "profit_difference": 4756.799999999988,
+          "paired_profit_difference_ci95_7day": [
+            1253.291250000001,
+            8486.423749999998
+          ],
+          "uplift_pct_of_abs_rule_profit": 2.7881867817860435,
+          "actor_fill_rate": 0.5872574208158582,
+          "rule_fill_rate": 0.5822408172798635,
+          "actor_mean_daily_spend": 2048.0,
+          "rule_mean_daily_spend": 2030.867256637168
+        },
+        {
+          "scenario": "holding_cost_doubled",
+          "economics": {
+            "budget_per_sku": 32.0,
+            "capacity_per_sku": 50,
+            "unit_price": 10.0,
+            "unit_cost": 4.0,
+            "holding_cost": 0.3,
+            "lost_sale_penalty": 2.0
+          },
+          "actor_profit": 247722.6,
+          "rule_profit": 244177.0,
+          "profit_difference": 3545.600000000006,
+          "paired_profit_difference_ci95_7day": [
+            582.2099999999958,
+            6750.729999999995
+          ],
+          "uplift_pct_of_abs_rule_profit": 1.4520614144657382,
+          "actor_fill_rate": 0.5872574208158582,
+          "rule_fill_rate": 0.5822408172798635,
+          "actor_mean_daily_spend": 2048.0,
+          "rule_mean_daily_spend": 2030.867256637168
+        },
+        {
+          "scenario": "purchase_budget_25pct_lower",
+          "economics": {
+            "budget_per_sku": 24.0,
+            "capacity_per_sku": 50,
+            "unit_price": 10.0,
+            "unit_cost": 4.0,
+            "holding_cost": 0.15,
+            "lost_sale_penalty": 2.0
+          },
+          "actor_profit": 155319.85,
+          "rule_profit": 154662.4,
+          "profit_difference": 657.4500000000116,
+          "paired_profit_difference_ci95_7day": [
+            -2242.7587499999972,
+            3475.0837500000007
+          ],
+          "uplift_pct_of_abs_rule_profit": 0.4250871575767683,
+          "actor_fill_rate": 0.44750337656007233,
+          "rule_fill_rate": 0.4469042275547612,
+          "actor_mean_daily_spend": 1536.0,
+          "rule_mean_daily_spend": 1536.0
+        },
+        {
+          "scenario": "purchase_budget_25pct_higher",
+          "economics": {
+            "budget_per_sku": 40.0,
+            "capacity_per_sku": 50,
+            "unit_price": 10.0,
+            "unit_cost": 4.0,
+            "holding_cost": 0.15,
+            "lost_sale_penalty": 2.0
+          },
+          "actor_profit": 271133.4,
+          "rule_profit": 269218.15,
+          "profit_difference": 1915.25,
+          "paired_profit_difference_ci95_7day": [
+            -3765.725000000002,
+            7716.457500000001
+          ],
+          "uplift_pct_of_abs_rule_profit": 0.7114119163213921,
+          "actor_fill_rate": 0.6311476242218679,
+          "rule_fill_rate": 0.6079432941009211,
+          "actor_mean_daily_spend": 2237.8761061946902,
+          "rule_mean_daily_spend": 2124.7433628318586
+        },
+        {
+          "scenario": "unit_procurement_cost_25pct_higher",
+          "economics": {
+            "budget_per_sku": 32.0,
+            "capacity_per_sku": 50,
+            "unit_price": 10.0,
+            "unit_cost": 5.0,
+            "holding_cost": 0.15,
+            "lost_sale_penalty": 2.0
+          },
+          "actor_profit": 129200.8,
+          "rule_profit": 129109.15,
+          "profit_difference": 91.65000000000873,
+          "paired_profit_difference_ci95_7day": [
+            -3455.7337499999962,
+            3659.7262500000033
+          ],
+          "uplift_pct_of_abs_rule_profit": 0.07098644828814127,
+          "actor_fill_rate": 0.47408934428726657,
+          "rule_fill_rate": 0.47390655306530727,
+          "actor_mean_daily_spend": 2040.0,
+          "rule_mean_daily_spend": 2040.0
+        }
+      ]
+    },
+    {
+      "store_id": "WI_1",
+      "policy_kind": "policy_search",
+      "model_sha256": "71ac12c3f3ddf294f7070cf2843d0b89b7202a33f395eca026455df923a18117",
+      "source_sha256": "f368e66ed1dbecb48b2cc8fc589bf68b3deddbbb36bf5c88b4d6d0a09b9b6724",
+      "test_days": [
+        1801,
+        1913
+      ],
+      "scenarios": [
+        {
+          "scenario": "original",
+          "economics": {
+            "budget_per_sku": 32.0,
+            "capacity_per_sku": 50,
+            "unit_price": 10.0,
+            "unit_cost": 4.0,
+            "holding_cost": 0.15,
+            "lost_sale_penalty": 2.0
+          },
+          "actor_profit": 308509.95,
+          "rule_profit": 303919.15,
+          "profit_difference": 4590.799999999988,
+          "paired_profit_difference_ci95_7day": [
+            805.8237499999979,
+            8490.146249999993
+          ],
+          "uplift_pct_of_abs_rule_profit": 1.5105333112441213,
+          "actor_fill_rate": 0.8847171299948949,
+          "rule_fill_rate": 0.8753268049689825,
+          "actor_mean_daily_spend": 2047.0088495575221,
+          "rule_mean_daily_spend": 2017.132743362832
+        },
+        {
+          "scenario": "sale_price_20pct_lower",
+          "economics": {
+            "budget_per_sku": 32.0,
+            "capacity_per_sku": 50,
+            "unit_price": 8.0,
+            "unit_cost": 4.0,
+            "holding_cost": 0.15,
+            "lost_sale_penalty": 2.0
+          },
+          "actor_profit": 194131.95,
+          "rule_profit": 190755.15,
+          "profit_difference": 3376.8000000000175,
+          "paired_profit_difference_ci95_7day": [
+            -122.65750000000322,
+            6923.504999999996
+          ],
+          "uplift_pct_of_abs_rule_profit": 1.7702274355371364,
+          "actor_fill_rate": 0.8847171299948949,
+          "rule_fill_rate": 0.8753268049689825,
+          "actor_mean_daily_spend": 2047.0088495575221,
+          "rule_mean_daily_spend": 2017.132743362832
+        },
+        {
+          "scenario": "sale_price_20pct_higher",
+          "economics": {
+            "budget_per_sku": 32.0,
+            "capacity_per_sku": 50,
+            "unit_price": 12.0,
+            "unit_cost": 4.0,
+            "holding_cost": 0.15,
+            "lost_sale_penalty": 2.0
+          },
+          "actor_profit": 422887.95,
+          "rule_profit": 417083.15,
+          "profit_difference": 5804.799999999988,
+          "paired_profit_difference_ci95_7day": [
+            1682.0074999999931,
+            10066.538749999992
+          ],
+          "uplift_pct_of_abs_rule_profit": 1.3917608515232485,
+          "actor_fill_rate": 0.8847171299948949,
+          "rule_fill_rate": 0.8753268049689825,
+          "actor_mean_daily_spend": 2047.0088495575221,
+          "rule_mean_daily_spend": 2017.132743362832
+        },
+        {
+          "scenario": "no_lost_sale_penalty",
+          "economics": {
+            "budget_per_sku": 32.0,
+            "capacity_per_sku": 50,
+            "unit_price": 10.0,
+            "unit_cost": 4.0,
+            "holding_cost": 0.15,
+            "lost_sale_penalty": 0.0
+          },
+          "actor_profit": 323413.95,
+          "rule_profit": 320037.15,
+          "profit_difference": 3376.7999999999884,
+          "paired_profit_difference_ci95_7day": [
+            -122.65749999999844,
+            6923.504999999996
+          ],
+          "uplift_pct_of_abs_rule_profit": 1.0551275062910628,
+          "actor_fill_rate": 0.8847171299948949,
+          "rule_fill_rate": 0.8753268049689825,
+          "actor_mean_daily_spend": 2047.0088495575221,
+          "rule_mean_daily_spend": 2017.132743362832
+        },
+        {
+          "scenario": "lost_sale_penalty_doubled",
+          "economics": {
+            "budget_per_sku": 32.0,
+            "capacity_per_sku": 50,
+            "unit_price": 10.0,
+            "unit_cost": 4.0,
+            "holding_cost": 0.15,
+            "lost_sale_penalty": 4.0
+          },
+          "actor_profit": 293605.95,
+          "rule_profit": 287801.15,
+          "profit_difference": 5804.799999999988,
+          "paired_profit_difference_ci95_7day": [
+            1682.0075000000006,
+            10066.538749999994
+          ],
+          "uplift_pct_of_abs_rule_profit": 2.016948160214088,
+          "actor_fill_rate": 0.8847171299948949,
+          "rule_fill_rate": 0.8753268049689825,
+          "actor_mean_daily_spend": 2047.0088495575221,
+          "rule_mean_daily_spend": 2017.132743362832
+        },
+        {
+          "scenario": "holding_cost_doubled",
+          "economics": {
+            "budget_per_sku": 32.0,
+            "capacity_per_sku": 50,
+            "unit_price": 10.0,
+            "unit_cost": 4.0,
+            "holding_cost": 0.3,
+            "lost_sale_penalty": 2.0
+          },
+          "actor_profit": 291345.9,
+          "rule_profit": 286072.3,
+          "profit_difference": 5273.600000000035,
+          "paired_profit_difference_ci95_7day": [
+            1159.8799999999994,
+            9462.902500000004
+          ],
+          "uplift_pct_of_abs_rule_profit": 1.8434500648961942,
+          "actor_fill_rate": 0.8847171299948949,
+          "rule_fill_rate": 0.8753268049689825,
+          "actor_mean_daily_spend": 2047.0088495575221,
+          "rule_mean_daily_spend": 2017.132743362832
+        },
+        {
+          "scenario": "purchase_budget_25pct_lower",
+          "economics": {
+            "budget_per_sku": 24.0,
+            "capacity_per_sku": 50,
+            "unit_price": 10.0,
+            "unit_cost": 4.0,
+            "holding_cost": 0.15,
+            "lost_sale_penalty": 2.0
+          },
+          "actor_profit": 213951.75,
+          "rule_profit": 217038.75,
+          "profit_difference": -3087.0,
+          "paired_profit_difference_ci95_7day": [
+            -7419.810000000004,
+            1512.382499999998
+          ],
+          "uplift_pct_of_abs_rule_profit": -1.42232665825803,
+          "actor_fill_rate": 0.6759177611732492,
+          "rule_fill_rate": 0.6782382698287465,
+          "actor_mean_daily_spend": 1536.0,
+          "rule_mean_daily_spend": 1536.0
+        },
+        {
+          "scenario": "purchase_budget_25pct_higher",
+          "economics": {
+            "budget_per_sku": 40.0,
+            "capacity_per_sku": 50,
+            "unit_price": 10.0,
+            "unit_cost": 4.0,
+            "holding_cost": 0.15,
+            "lost_sale_penalty": 2.0
+          },
+          "actor_profit": 314777.5,
+          "rule_profit": 307624.8,
+          "profit_difference": 7152.700000000012,
+          "paired_profit_difference_ci95_7day": [
+            4038.805000000006,
+            10224.520000000006
+          ],
+          "uplift_pct_of_abs_rule_profit": 2.325137635197166,
+          "actor_fill_rate": 0.9121146021874662,
+          "rule_fill_rate": 0.8888166952862734,
+          "actor_mean_daily_spend": 2117.380530973451,
+          "rule_mean_daily_spend": 2054.2300884955753
+        },
+        {
+          "scenario": "unit_procurement_cost_25pct_higher",
+          "economics": {
+            "budget_per_sku": 32.0,
+            "capacity_per_sku": 50,
+            "unit_price": 10.0,
+            "unit_cost": 5.0,
+            "holding_cost": 0.15,
+            "lost_sale_penalty": 2.0
+          },
+          "actor_profit": 188473.8,
+          "rule_profit": 190437.45,
+          "profit_difference": -1963.6500000000233,
+          "paired_profit_difference_ci95_7day": [
+            -6552.836250000004,
+            2793.172499999998
+          ],
+          "uplift_pct_of_abs_rule_profit": -1.0311259681328557,
+          "actor_fill_rate": 0.7171918751256943,
+          "rule_fill_rate": 0.718800761126839,
+          "actor_mean_daily_spend": 2040.0,
+          "rule_mean_daily_spend": 2040.0
+        }
+      ]
+    }
+  ]
+}
