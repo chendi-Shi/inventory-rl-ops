@@ -17,6 +17,7 @@ from inventory_rl.m5_future_holdout import run_future_holdout
 from inventory_rl.m5_guided import run_guided
 from inventory_rl.m5_hybrid import run_hybrid
 from inventory_rl.m5_policy_search import run_policy_search
+from inventory_rl.m5_safety_future import run_safety_future
 from inventory_rl.m5_sensitivity import run_sensitivity
 from inventory_rl.m5_stress import run_stress
 from inventory_rl.m5_transfer import run_transfer
@@ -141,6 +142,14 @@ def main() -> None:
     future_cmd.add_argument("--evaluation", type=Path, required=True)
     future_cmd.add_argument("--output", type=Path,
                             default=Path("artifacts/m5-future-holdout"))
+    safety_future_cmd = commands.add_parser(
+        "m5-safety-future", help="compare frozen TX_3 safety rule on M5 days 1914-1941"
+    )
+    safety_future_cmd.add_argument("--validation", type=Path,
+                                   default=Path("data/m5/sales_train_validation.csv"))
+    safety_future_cmd.add_argument("--evaluation", type=Path, required=True)
+    safety_future_cmd.add_argument("--output", type=Path,
+                                   default=Path("artifacts/m5-safety-future"))
     args = parser.parse_args()
     if args.command == "train":
         report = train(args.episodes, args.seed, args.output)
@@ -175,6 +184,8 @@ def main() -> None:
                                    sku_count=args.skus)
     elif args.command == "m5-future-holdout":
         report = run_future_holdout(args.validation, args.evaluation, args.output)
+    elif args.command == "m5-safety-future":
+        report = run_safety_future(args.validation, args.evaluation, args.output)
     else:
         report = run_stress(args.data, args.output,
                             context_bundle=args.context_bundle,
