@@ -66,6 +66,13 @@ Because this baseline was conceived after seeing the replay, its intervals
 do not remove researcher-selection bias. A separately frozen future period is
 needed to compare the policies credibly.
 
+That [later, predeclared 28-day comparison](SAFETY_FUTURE_RESULTS.md) is now
+available. On days 1914–1941 the actor's simulated profit was 64,151.65
+versus 63,223.45 for this safety rule, a reversal of the earlier point
+ordering. The paired safety-minus-actor interval crosses zero; neither period
+settles which policy is better. The comparison leaves the published bundle
+and release decision unchanged.
+
 ## Reproduction and limits
 
 Keep the original `sales_train_validation.csv` under `data/m5/`; the raw M5

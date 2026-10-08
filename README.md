@@ -8,7 +8,11 @@ A portfolio-scale reinforcement learning system for **64 SKUs sharing one wareho
 
 The exact WI_1 coefficients **did not transfer** to WI_2 or WI_3: both test comparisons were −1.21% against their own tuned rules. [Predeclared transfer result](docs/TRANSFER_RESULTS.md). A [post-hoc stronger-rule sensitivity check](docs/STRONGER_BASELINE_SENSITIVITY.md) still left a +1.50% WI_1 actor advantage, but is labeled diagnostic because the WI_1 test had already been inspected.
 
-WI_1 and TX_3 were held out at the **store level**, with separate policy training and plans fixed before each store's test. They share M5 calendar days 1801–1913, and the methods were refined after results from other stores became known. They are not two independent future time periods. A fresh data period is needed to confirm performance beyond this retrospective project.
+WI_1 and TX_3 were held out at the **store level**, with separate policy training and plans fixed before each store's test. They share M5 calendar days 1801–1913, and the methods were refined after results from other stores became known. They are not two independent future time periods.
+
+**Later-calendar check of frozen policies:** using the official M5 evaluation file, we continuously replayed both already released actors and their original rules, then scored only the previously unseen days **1914–1941**. WI_1 gained **2,576.70 simulated units (+3.16%)** over its rule (84,233.30 vs 81,656.60; paired seven-day-block 95% interval **[+848.73, +4,406.71]**). TX_3 gained **987.35 (+1.56%)** over its rule (64,151.65 vs 63,164.30), but its interval **[−740.04, +2,987.21]** crosses zero. Both actors had lower 10th-percentile daily profit than their rules in these 28 days (WI_1: 1,946.37 vs 2,028.01; TX_3: 1,840.73 vs 1,928.38), so **neither passes the original no-downside-drop release gate on this new period**. The existing model bundles were not changed. Four seven-day blocks give limited precision, and all values remain simulated. [Frozen-period plan](docs/NEW_TIME_HOLDOUT_PLAN.md) · [Full result](docs/NEW_TIME_HOLDOUT_RESULTS.md) · [Daily report](docs/m5-future-holdout-report.json).
+
+For TX_3, a separately frozen safety-stock rule scored **63,223.45** on those same 28 days: higher than the original rule, but below the actor by **928.20 (+1.47% relative to safety)**. The paired safety-minus-actor interval **[−2,978.25, +1,081.84]** crosses zero, so this comparison does not establish that either policy is better. Its stronger result on the already inspected 113-day period was **post-hoc**, and its interval also crossed zero. [Safety comparison](docs/SAFETY_FUTURE_RESULTS.md) · [Plan](docs/SAFETY_FUTURE_COMPARISON_PLAN.md).
 
 A [post-hoc economic stress test](docs/ECONOMICS_STRESS_RESULTS.md) replays the frozen policies under changed prices, penalties and purchasing resources. WI_1's simulated profit advantage reverses when the budget falls by 25% or procurement unit cost rises by 25%; TX_3 remains slightly positive in point estimate in those cases but its exploratory interval crosses zero. These limits are part of the published result, not additional independent validations.
 
@@ -47,6 +51,21 @@ inventory-rl m5-run --data data/m5/sales_train_validation.csv \
 The command writes `report.json`, `portfolio_model.npz`, and `portfolio_manifest.json`. The 64 SKUs are selected using **training-period sales only**. Days 1–1700 train the policy, 1701–1800 select checkpoints and tune the base-stock rule, and 1801–1913 are held out for the final comparison. The report includes SKU IDs, source checksum, all daily test profits, total profit, fill rate, mean spending and a 7-day-block paired bootstrap interval. [Full protocol and limitations](docs/M5_PROTOCOL.md).
 
 The official CSV is excluded from Git. Its Zenodo MD5 is `26a366a25beb57b0a8f4c7b148758f94`; the tested copy's SHA-256 is recorded in [the results](docs/M5_RESULTS.md). Without the CSV, `pytest` runs an end-to-end M5-schema fixture through the same loader, training loop, artifact checks and constrained recommendation path. A separate 3-SKU synthetic smoke test remains in the repo to validate simulator invariants; its [numbers](docs/synthetic-results.json) are explicitly separate from the M5 experiment.
+
+To reproduce the **frozen** later-calendar check, also download `sales_train_evaluation.csv` from the same M5 source and place it in `data/m5/`. The command verifies both source files, the shared day-1–1913 history, SKU order, released bundles and the published warm-up daily profits before scoring days 1914–1941:
+
+```bash
+inventory-rl m5-future-holdout \
+  --validation data/m5/sales_train_validation.csv \
+  --evaluation data/m5/sales_train_evaluation.csv \
+  --output artifacts/m5-future-holdout
+inventory-rl m5-safety-future \
+  --validation data/m5/sales_train_validation.csv \
+  --evaluation data/m5/sales_train_evaluation.csv \
+  --output artifacts/m5-safety-future
+```
+
+The second command reproduces the TX_3 safety-stock comparison using its validation-frozen parameters. [Later-calendar results](docs/NEW_TIME_HOLDOUT_RESULTS.md) · [Safety-stock results](docs/SAFETY_FUTURE_RESULTS.md).
 
 ## Residual-RL experiment on CA_4
 
@@ -124,11 +143,11 @@ The optional FastAPI service has versioned health and recommendation endpoints. 
 
 Version 4 requires each request to include the exact SKU order or its fingerprint. `/v4/health` returns both, plus the source and model fingerprints. See the [v4 request and response contract](docs/API_V4.md) for the input shapes and a shape-only client example.
 
-The gate requires the lower 95% bound of paired profit uplift to be positive, a fill-rate drop of at most two percentage points, and no drop in 10th-percentile daily profit against the validation-tuned base-stock rule. Passing the gate is a research result, not purchasing approval. The test outcomes also decide which policy bundle is marked active, so these same test days cannot independently validate an already released policy. A new period and operational shadow run are needed for that. A [predeclared cross-store evaluation](docs/CROSS_STORE_PLAN.md) tests the pipeline in CA_2 and CA_3. The API does not include authentication, monitoring or integration with an ERP.
+The gate requires the lower 95% bound of paired profit uplift to be positive, a fill-rate drop of at most two percentage points, and no drop in 10th-percentile daily profit against the validation-tuned base-stock rule. Passing the gate is a research result, not purchasing approval. The older test outcomes decided which policy bundle was marked active; the later 28-day frozen-policy check provides new calendar evidence but does not meet the original downside-profit condition for either actor or change the bundles. A longer new period with calibrated operational data and an operational shadow run are still needed. A [predeclared cross-store evaluation](docs/CROSS_STORE_PLAN.md) tests the pipeline in CA_2 and CA_3. The API does not include authentication, monitoring or integration with an ERP.
 
 ## What can go on a resume
 
-> Built a 64-SKU, shared-budget inventory RL platform on M5 item-level sales. Separately trained whole-portfolio policy-search actors improved **simulated profit by 1.51% on WI_1 and 1.49% on TX_3** in predeclared store-level holdouts against validation-tuned rules, with positive paired 95% lower bounds and higher fill rates. Published negative DQN and frozen-transfer results, versioned model bundles, constrained FastAPI serving and CI.
+> Built a 64-SKU, shared-budget inventory RL platform on M5 item-level sales. Separately trained whole-portfolio policy-search actors improved **simulated profit by 1.51% on WI_1 and 1.49% on TX_3** in predeclared store-level holdouts against validation-tuned rules. A later 28-day frozen-policy replay showed **+3.16%** on WI_1 and **+1.56%** on TX_3, with the latter interval crossing zero and both policies losing on the downside daily-profit check. Published negative DQN and frozen-transfer results, versioned model bundles, constrained FastAPI serving and CI.
 
 Do not describe the simulated differences as real retail profit changes or claim that one fixed actor generalizes across stores. M5 provides observed sales, which may be censored by historical stockouts; procurement costs, lead times and capacity in this project are simulated. Both actors are offline research results, not purchasing authorization.
 
@@ -150,5 +169,5 @@ Do not describe the simulated differences as real retail profit changes or claim
 | Post-hoc stronger baseline check | `src/inventory_rl/m5_sensitivity.py`, `docs/STRONGER_BASELINE_SENSITIVITY.md` |
 | Portable policy bundles and inference | `src/inventory_rl/portfolio_artifact.py`, `src/inventory_rl/policy_search_artifact.py`, `src/inventory_rl/context_artifact.py`, `src/inventory_rl/api.py` |
 | Automated checks | `tests/`, `.github/workflows/ci.yml` |
-| Official-data evaluation and limitations | `docs/CROSS_STORE_RESULTS.md`, `docs/M5_RESULTS.md`, `docs/M5_PROTOCOL.md` |
+| Official-data evaluation and limitations | `docs/CROSS_STORE_RESULTS.md`, `docs/M5_RESULTS.md`, `docs/M5_PROTOCOL.md`, `docs/NEW_TIME_HOLDOUT_RESULTS.md`, `docs/SAFETY_FUTURE_RESULTS.md` |
 | Small synthetic component benchmark | `src/inventory_rl/env.py`, `docs/synthetic-results.json` |

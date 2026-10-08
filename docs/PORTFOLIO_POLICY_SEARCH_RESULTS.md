@@ -14,3 +14,5 @@ This is **one held-out store** under simulated economics. The earlier factored D
 A later [retrospective economic stress test](ECONOMICS_STRESS_RESULTS.md) finds that this fixed WI_1 actor falls below its fixed rule when purchasing budget is reduced by 25% or unit procurement cost rises by 25%. That analysis reuses the same test days and does not alter the original predeclared result.
 
 M5 contains observed sales rather than unconstrained demand; historical stockouts could censor it. Unit prices, purchase and holding costs, penalties, budget, capacity and lead times are simulated. The bootstrap interval reflects variation across days in this one backtest, not across economics or stores.
+
+The [subsequently frozen later-period evaluation](NEW_TIME_HOLDOUT_RESULTS.md) replays this unchanged actor and rule through M5 days 1914–1941. WI_1 actor profit is 3.16% higher in that 28-day window, but its 10th-percentile daily profit is lower than the rule's, so the original three-part release gate would not pass on the new window. This does not alter the earlier, predeclared result or the published bundle.
