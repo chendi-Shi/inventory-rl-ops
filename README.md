@@ -14,6 +14,8 @@ WI_1 and TX_3 were held out at the **store level**, with separate policy trainin
 
 For TX_3, a separately frozen safety-stock rule scored **63,223.45** on those same 28 days: higher than the original rule, but below the actor by **928.20 (+1.47% relative to safety)**. The paired safety-minus-actor interval **[−2,978.25, +1,081.84]** crosses zero, so this comparison does not establish that either policy is better. Its stronger result on the already inspected 113-day period was **post-hoc**, and its interval also crossed zero. [Safety comparison](docs/SAFETY_FUTURE_RESULTS.md) · [Plan](docs/SAFETY_FUTURE_COMPARISON_PLAN.md).
 
+**Exact allocation diagnostic:** a multiple-choice knapsack dynamic program now finds the highest total *policy score* across the 64 SKU pack choices under the shared limits. The [retrospective audit](docs/EXACT_ALLOCATOR_RESULTS.md) compares it with the existing greedy allocator on already inspected days 1801–1941, with each path replayed continuously from day 1801. Score gaps were small; replacing the allocator did **not** establish a simulated profit gain (on the later 28-day actor paths, exact minus greedy was −27.30 on WI_1 and −204.45 on TX_3, with both paired intervals crossing zero). This is a certified one-step score optimization check, **not** a new RL uplift, model promotion, or untouched holdout. The original bundles and serving behavior remain unchanged. Uniform unit cost and storage per item currently reduce both limits to one ordered-unit resource; item-specific costs or volumes would require a different, multidimensional solver.
+
 A [post-hoc economic stress test](docs/ECONOMICS_STRESS_RESULTS.md) replays the frozen policies under changed prices, penalties and purchasing resources. WI_1's simulated profit advantage reverses when the budget falls by 25% or procurement unit cost rises by 25%; TX_3 remains slightly positive in point estimate in those cases but its exploratory interval crosses zero. These limits are part of the published result, not additional independent validations.
 
 A separate [accounting audit](docs/ACCOUNTING_AUDIT.md) replays every published test day and reconciles the profit differences to sales revenue, purchase cost, inventory holding and lost-sale penalties. It also reports terminal on-hand and in-transit units, which the finite-window simulator gives no salvage value.
@@ -31,6 +33,8 @@ A second [TX_2 budget-allocation study](docs/ALLOCATION_RESULTS.md) tested three
 Each daily order affects future inventory because item lead times span one to three days. The agent trades service level, holding cost, purchasing cost and lost sales while it competes for a **shared** budget and storage space. It receives each SKU's stock, outstanding orders, recent sales, historical sales level, lead time, and weekly phase. The network scores four pack choices per item (0, 4, 8, 16 units). A deterministic marginal-value allocator coordinates all 64 scores into one feasible portfolio order. The simulator checks both hard constraints before every transition.
 
 This factorization avoids a joint action space of `4^64`. The policy uses shared neural weights, replay, Double DQN targets, a target network, Huber loss and Adam. The NumPy implementation is inspectable in [agent.py](src/inventory_rl/agent.py), and the allocation logic is in [portfolio.py](src/inventory_rl/portfolio.py).
+
+The optional exact allocator solves the current one-resource pack assignment globally for the supplied scores. It does not forecast demand or optimize multi-day profit; [its comparison with greedy allocation](docs/EXACT_ALLOCATOR_RESULTS.md) is reported separately from the RL policy results.
 
 ## Reproduce the M5 experiment
 
@@ -66,6 +70,17 @@ inventory-rl m5-safety-future \
 ```
 
 The second command reproduces the TX_3 safety-stock comparison using its validation-frozen parameters. [Later-calendar results](docs/NEW_TIME_HOLDOUT_RESULTS.md) · [Safety-stock results](docs/SAFETY_FUTURE_RESULTS.md).
+
+To reproduce the **post-hoc exact-allocation audit** on both already inspected windows, run:
+
+```bash
+inventory-rl m5-allocator-audit \
+  --validation data/m5/sales_train_validation.csv \
+  --evaluation data/m5/sales_train_evaluation.csv \
+  --output artifacts/m5-allocator-audit
+```
+
+The command verifies the released model and source fingerprints, reconciles the original greedy trajectories, and writes score gaps and paired replay outcomes. [Protocol](docs/EXACT_ALLOCATOR_PLAN.md) · [Results](docs/EXACT_ALLOCATOR_RESULTS.md).
 
 ## Residual-RL experiment on CA_4
 
@@ -147,7 +162,7 @@ The gate requires the lower 95% bound of paired profit uplift to be positive, a 
 
 ## What can go on a resume
 
-> Built a 64-SKU, shared-budget inventory RL platform on M5 item-level sales. Separately trained whole-portfolio policy-search actors improved **simulated profit by 1.51% on WI_1 and 1.49% on TX_3** in predeclared store-level holdouts against validation-tuned rules. A later 28-day frozen-policy replay showed **+3.16%** on WI_1 and **+1.56%** on TX_3, with the latter interval crossing zero and both policies losing on the downside daily-profit check. Published negative DQN and frozen-transfer results, versioned model bundles, constrained FastAPI serving and CI.
+> Built a 64-SKU, shared-budget inventory RL platform on M5 item-level sales. Separately trained whole-portfolio policy-search actors improved **simulated profit by 1.51% on WI_1 and 1.49% on TX_3** in predeclared store-level holdouts against validation-tuned rules. A later 28-day frozen-policy replay showed **+3.16%** on WI_1 and **+1.56%** on TX_3, with the latter interval crossing zero and both policies losing on the downside daily-profit check. Added an exact pack-allocation optimality audit, which found no reliable profit improvement from changing the allocator. Published negative DQN and frozen-transfer results, versioned model bundles, constrained FastAPI serving and CI.
 
 Do not describe the simulated differences as real retail profit changes or claim that one fixed actor generalizes across stores. M5 provides observed sales, which may be censored by historical stockouts; procurement costs, lead times and capacity in this project are simulated. Both actors are offline research results, not purchasing authorization.
 
@@ -163,6 +178,7 @@ Do not describe the simulated differences as real retail profit changes or claim
 | Residual RL experiment | `src/inventory_rl/m5_hybrid.py`, `docs/HYBRID_PLAN.md`, `docs/HYBRID_RESULTS.md` |
 | Guided exploration ablation | `src/inventory_rl/m5_guided.py`, `docs/GUIDED_EXPLORATION_PLAN.md`, `docs/GUIDED_EXPLORATION_RESULTS.md` |
 | Allocation score study | `src/inventory_rl/m5_allocation.py`, `docs/ALLOCATION_PLAN.md`, `docs/ALLOCATION_RESULTS.md` |
+| Exact score-allocation diagnostic | `src/inventory_rl/m5_allocator_audit.py`, `docs/EXACT_ALLOCATOR_RESULTS.md` |
 | Portfolio-return RL and transfer | `src/inventory_rl/m5_policy_search.py`, `src/inventory_rl/m5_transfer.py`, `docs/PORTFOLIO_POLICY_SEARCH_RESULTS.md`, `docs/TRANSFER_RESULTS.md` |
 | Context-aware actor on TX_3 | `src/inventory_rl/m5_context_actor.py`, `docs/CONTEXT_ACTOR_PLAN.md`, `docs/CONTEXT_ACTOR_RESULTS.md` |
 | Retrospective stress and accounting audits | `src/inventory_rl/m5_stress.py`, `src/inventory_rl/m5_accounting.py`, `docs/ECONOMICS_STRESS_RESULTS.md`, `docs/ACCOUNTING_AUDIT.md` |
