@@ -11,6 +11,7 @@ from inventory_rl.artifact import load_model, save_model
 from inventory_rl.env import InventoryConfig, InventoryEnv
 from inventory_rl.evaluation import compare
 from inventory_rl.m5_allocation import run_allocation
+from inventory_rl.m5_allocator_audit import run_allocator_audit
 from inventory_rl.m5_context_actor import run_context_development, run_context_final
 from inventory_rl.m5_experiment import run as run_m5
 from inventory_rl.m5_future_holdout import run_future_holdout
@@ -150,6 +151,22 @@ def main() -> None:
     safety_future_cmd.add_argument("--evaluation", type=Path, required=True)
     safety_future_cmd.add_argument("--output", type=Path,
                                    default=Path("artifacts/m5-safety-future"))
+    allocator_audit_cmd = commands.add_parser(
+        "m5-allocator-audit",
+        help="post-hoc exact-versus-greedy audit of frozen WI_1/TX_3 policies",
+    )
+    allocator_audit_cmd.add_argument(
+        "--validation", type=Path,
+        default=Path("data/m5/sales_train_validation.csv"),
+    )
+    allocator_audit_cmd.add_argument("--evaluation", type=Path, required=True)
+    allocator_audit_cmd.add_argument(
+        "--future-report", type=Path,
+        default=Path("docs/m5-future-holdout-report.json"),
+    )
+    allocator_audit_cmd.add_argument(
+        "--output", type=Path, default=Path("artifacts/m5-allocator-audit"),
+    )
     args = parser.parse_args()
     if args.command == "train":
         report = train(args.episodes, args.seed, args.output)
@@ -186,6 +203,11 @@ def main() -> None:
         report = run_future_holdout(args.validation, args.evaluation, args.output)
     elif args.command == "m5-safety-future":
         report = run_safety_future(args.validation, args.evaluation, args.output)
+    elif args.command == "m5-allocator-audit":
+        report = run_allocator_audit(
+            args.validation, args.evaluation, args.output,
+            future_report_path=args.future_report,
+        )
     else:
         report = run_stress(args.data, args.output,
                             context_bundle=args.context_bundle,
