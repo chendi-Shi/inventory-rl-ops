@@ -158,6 +158,72 @@ def allocate(scores: np.ndarray, *, stock: np.ndarray, pipeline: np.ndarray,
     return ORDER_CHOICES[selected]
 
 
+def allocate_exact(scores: np.ndarray, *, stock: np.ndarray, pipeline: np.ndarray,
+                   budget: float, capacity: int, unit_cost: float) -> np.ndarray:
+    """Maximize the sum of per-SKU scores subject to shared order limits.
+
+    Every action is a multiple of four units, and all SKUs have the same unit
+    cost. The budget and storage limits therefore collapse to one integer
+    capacity in four-unit quanta. Dynamic programming solves the resulting
+    multiple-choice knapsack exactly. Equal scores prefer fewer ordered units,
+    then earlier SKUs; the result does not depend on dictionary or hash order.
+    """
+    n_sku = len(stock)
+    if scores.shape != (n_sku, len(ORDER_CHOICES)) or not np.isfinite(scores).all():
+        raise ValueError("scores must be a finite n_sku-by-4 array")
+    if (stock.shape != (n_sku,) or pipeline.shape != (n_sku,) or
+            not np.issubdtype(stock.dtype, np.integer) or
+            not np.issubdtype(pipeline.dtype, np.integer) or
+            (stock < 0).any() or (pipeline < 0).any()):
+        raise ValueError("stock and pipeline must be nonnegative integer vectors")
+    if (not np.isfinite(budget) or budget < 0 or
+            not np.isfinite(unit_cost) or unit_cost <= 0 or
+            isinstance(capacity, (bool, np.bool_)) or not np.isfinite(capacity) or
+            capacity < 0 or int(capacity) != capacity):
+        raise ValueError("invalid budget, capacity or unit cost")
+    occupied = int(stock.sum(dtype=np.int64) + pipeline.sum(dtype=np.int64))
+    if occupied > capacity:
+        raise ValueError("current position exceeds capacity")
+
+    maximum_order_units = int(ORDER_CHOICES[-1]) * n_sku
+    budget_units = int(np.floor(min((budget + 1e-9) / unit_cost,
+                                    maximum_order_units)))
+    available_units = min(budget_units, int(capacity) - occupied,
+                          maximum_order_units)
+    max_quanta = available_units // 4
+    weights = ORDER_CHOICES // 4
+    delta = scores.astype(np.float64) - scores[:, :1]
+    if not np.isfinite(delta).all():
+        raise ValueError("score differences must be finite")
+
+    best = np.full(max_quanta + 1, -np.inf, dtype=np.float64)
+    best[0] = 0.0
+    decisions = np.full((n_sku, max_quanta + 1), -1, dtype=np.int8)
+    for sku in range(n_sku):
+        following = np.full_like(best, -np.inf)
+        for action, weight in enumerate(weights):
+            if weight > max_quanta:
+                continue
+            candidates = best[:max_quanta + 1 - weight] + delta[sku, action]
+            destinations = following[weight:]
+            improve = candidates > destinations
+            destinations[improve] = candidates[improve]
+            decisions[sku, weight:][improve] = action
+        best = following
+
+    used_quanta = int(np.argmax(best))
+    orders = np.zeros(n_sku, dtype=np.int32)
+    for sku in range(n_sku - 1, -1, -1):
+        action = int(decisions[sku, used_quanta])
+        if action < 0:
+            raise RuntimeError("exact allocation reconstruction failed")
+        orders[sku] = ORDER_CHOICES[action]
+        used_quanta -= int(weights[action])
+    if used_quanta != 0:
+        raise RuntimeError("exact allocation reconstruction used the wrong capacity")
+    return orders
+
+
 class PortfolioEnv:
     """Replay observed M5 sales as an exogenous demand proxy for selected SKUs."""
 
