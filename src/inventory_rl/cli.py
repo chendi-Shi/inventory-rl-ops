@@ -13,6 +13,7 @@ from inventory_rl.evaluation import compare
 from inventory_rl.m5_allocation import run_allocation
 from inventory_rl.m5_context_actor import run_context_development, run_context_final
 from inventory_rl.m5_experiment import run as run_m5
+from inventory_rl.m5_future_holdout import run_future_holdout
 from inventory_rl.m5_guided import run_guided
 from inventory_rl.m5_hybrid import run_hybrid
 from inventory_rl.m5_policy_search import run_policy_search
@@ -133,6 +134,13 @@ def main() -> None:
                             default=Path("models/tx3-context"))
     stress_cmd.add_argument("--policy-search-bundle", type=Path,
                             default=Path("models/wi1-policy-search"))
+    future_cmd = commands.add_parser("m5-future-holdout",
+                                     help="score frozen WI_1/TX_3 policies on M5 days 1914-1941")
+    future_cmd.add_argument("--validation", type=Path,
+                            default=Path("data/m5/sales_train_validation.csv"))
+    future_cmd.add_argument("--evaluation", type=Path, required=True)
+    future_cmd.add_argument("--output", type=Path,
+                            default=Path("artifacts/m5-future-holdout"))
     args = parser.parse_args()
     if args.command == "train":
         report = train(args.episodes, args.seed, args.output)
@@ -165,6 +173,8 @@ def main() -> None:
     elif args.command == "m5-context-run":
         report = run_context_final(args.data, args.output, store_id=args.store,
                                    sku_count=args.skus)
+    elif args.command == "m5-future-holdout":
+        report = run_future_holdout(args.validation, args.evaluation, args.output)
     else:
         report = run_stress(args.data, args.output,
                             context_bundle=args.context_bundle,
